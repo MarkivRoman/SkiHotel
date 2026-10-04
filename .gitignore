@@ -1,0 +1,18 @@
+# Папки збірки Visual Studio (постійно перераховуються при запуску)
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Прихована папка налаштувань Visual Studio
+.vs/
+
+# Тимчасові файли та файли користувача
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+# Результати тестів та покриття коду
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
