@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
+using SkiHotel.Forms;
 
 namespace SkiHotel
 {
@@ -162,15 +163,13 @@ namespace SkiHotel
         // =========================
 
         private void BtnNewOrder_Click(
-            object sender,
-            EventArgs e)
+     object sender,
+     EventArgs e)
         {
-            MessageBox.Show(
-                "Тут буде форма оформлення нового замовлення.",
-                "Нове замовлення",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
-            );
+            using (OrderForm orderForm = new OrderForm())
+            {
+                orderForm.ShowDialog();
+            }
         }
 
         // =========================
