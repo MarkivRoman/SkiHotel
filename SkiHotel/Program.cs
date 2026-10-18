@@ -16,6 +16,11 @@ namespace SkiHotel
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
+            // Запускаємо Telegram-бот у фоновому потоці
+            Task.Run(() => TelegramBotHandler.StartBot());
+
+            // Запускаємо головне вікно Windows Forms
             Application.Run(new MainForm());
         }
     }
