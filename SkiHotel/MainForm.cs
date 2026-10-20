@@ -176,17 +176,15 @@ namespace SkiHotel
         // КЛІЄНТИ
         // =========================
 
-        private void BtnClients_Click(
-            object sender,
-            EventArgs e)
+        private void BtnClients_Click(object sender, EventArgs e)
         {
-            MessageBox.Show(
-                "Тут буде список клієнтів та замовлень.",
-                "Клієнти",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
-            );
+            using (ClientsForm form = new ClientsForm())
+            {
+                form.ShowDialog(this);
+            }
+            
         }
+
 
         // =========================
         // СПОРЯДЖЕННЯ
