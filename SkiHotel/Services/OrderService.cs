@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using SkiHotel.Models;
@@ -17,54 +16,6 @@ namespace SkiHotel.Services
 
         private const string Separator = "========================================";
 
-        public static void SaveOrder(Order order)
-        {
-            Directory.CreateDirectory(DataFolder);
-
-            List<Order> orders = GetAllOrders();
-
-            order.Id = orders.Count == 0
-                ? 1
-                : orders.Max(x => x.Id) + 1;
-
-            order.CreatedAt = DateTime.Now;
-
-            using (StreamWriter writer = new StreamWriter(FilePath, true))
-            {
-                writer.WriteLine(Separator);
-                writer.WriteLine("ЗАМОВЛЕННЯ");
-                writer.WriteLine("ID: " + order.Id);
-                writer.WriteLine("Дата: " + order.CreatedAt);
-                writer.WriteLine("Клієнт: " + order.ClientName);
-                writer.WriteLine("Телефон: " + order.Phone);
-                writer.WriteLine("Email: " + order.Email);
-                writer.WriteLine("Власне спорядження: " +
-                    (order.HasOwnEquipment ? "Так" : "Ні"));
-
-                if (!order.HasOwnEquipment)
-                {
-                    writer.WriteLine("Вага: " + order.Weight + " кг");
-                    writer.WriteLine("Зріст: " + order.Height + " см");
-                    writer.WriteLine("Розмір взуття: " + order.ShoeSize);
-                    writer.WriteLine("Рівень: " + order.SkillLevel);
-                    writer.WriteLine("Лижі: " + order.Skis);
-                    writer.WriteLine("Черевики: " + order.Boots);
-                    writer.WriteLine("Палиці: " + order.Poles);
-                }
-
-                writer.WriteLine("Днів абонемента: " + order.SkiPassDays);
-                writer.WriteLine("Номер у готелі: " +
-                    (order.HotelRoom ? "Так" : "Ні"));
-                writer.WriteLine("Сніданок: " +
-                    (order.Breakfast ? "Так" : "Ні"));
-                writer.WriteLine("Сауна: " +
-                    (order.Sauna ? "Так" : "Ні"));
-                writer.WriteLine("Вартість: " + order.TotalPrice + " грн");
-                writer.WriteLine("Статус: " + order.Status);
-                writer.WriteLine();
-            }
-        }
-
         public static List<Order> GetAllOrders()
         {
             List<Order> orders = new List<Order>();
@@ -75,7 +26,6 @@ namespace SkiHotel.Services
             }
 
             string content = File.ReadAllText(FilePath);
-
             if (string.IsNullOrWhiteSpace(content))
             {
                 return orders;
@@ -93,13 +43,10 @@ namespace SkiHotel.Services
                 }
 
                 Order order = new Order();
-
                 order.Id = ReadInt(block, "ID:", 0);
 
                 string dateText = ReadValue(block, "Дата:");
-                DateTime createdAt;
-
-                if (DateTime.TryParse(dateText, out createdAt))
+                if (DateTime.TryParse(dateText, out DateTime createdAt))
                 {
                     order.CreatedAt = createdAt;
                 }
@@ -107,39 +54,40 @@ namespace SkiHotel.Services
                 order.ClientName = ReadValue(block, "Клієнт:");
                 order.Phone = ReadValue(block, "Телефон:");
                 order.Email = ReadValue(block, "Email:");
+                order.HasEquipment = ReadValue(block, "Власне спорядження:");
+                order.Weight = ReadValue(block, "Вага:");
+                order.Height = ReadValue(block, "Зріст:");
+                order.ShoeSize = ReadValue(block, "Розмір взуття:");
 
-                order.HasOwnEquipment =
-                    ReadValue(block, "Власне спорядження:") == "Так";
-
-                order.Weight = ReadDouble(block, "Вага:", 0);
-                order.Height = ReadDouble(block, "Зріст:", 0);
-                order.ShoeSize = ReadInt(block, "Розмір взуття:", 0);
-                order.SkillLevel = ReadValue(block, "Рівень:");
+                string level = ReadValue(block, "Рівень:");
+                order.SkillLevel = level;
+                order.Level = level;
 
                 order.Skis = ReadValue(block, "Лижі:");
                 order.Boots = ReadValue(block, "Черевики:");
                 order.Poles = ReadValue(block, "Палиці:");
 
-                order.SkiPassDays =
-                    ReadInt(block, "Днів абонемента:", 0);
+                int days = ReadInt(block, "Днів абонемента:", 1);
+                order.SkiPassDays = days;
+                order.Days = days;
 
-                order.HotelRoom =
-                    ReadValue(block, "Номер у готелі:") == "Так";
+                order.HotelRoom = ReadValue(block, "Номер у готелі:");
 
-                order.Breakfast =
-                    ReadValue(block, "Сніданок:") == "Так";
+                string breakfastStr = ReadValue(block, "Сніданок:");
+                order.Breakfast = (breakfastStr == "Так" || breakfastStr == "True");
 
-                order.Sauna =
-                    ReadValue(block, "Сауна:") == "Так";
+                string saunaStr = ReadValue(block, "Сауна:");
+                order.Sauna = (saunaStr == "Так" || saunaStr == "True");
 
-                order.TotalPrice = ReadDecimal(block, "Вартість:", 0);
-
-                order.Status = ReadValue(block, "Статус:");
-
-                if (string.IsNullOrWhiteSpace(order.Status))
+                string costStr = ReadValue(block, "Вартість:");
+                order.Cost = costStr;
+                if (decimal.TryParse(costStr.Replace(" грн", "").Trim(), out decimal price))
                 {
-                    order.Status = "Заброньовано";
+                    order.TotalPrice = price;
                 }
+
+                string status = ReadValue(block, "Статус:");
+                order.Status = string.IsNullOrWhiteSpace(status) ? "Заброньовано" : status;
 
                 orders.Add(order);
             }
@@ -147,102 +95,92 @@ namespace SkiHotel.Services
             return orders.OrderBy(x => x.Id).ToList();
         }
 
+        public static void SaveOrder(Order order)
+        {
+            var orders = GetAllOrders();
+            order.Id = orders.Count > 0 ? orders.Max(o => o.Id) + 1 : 1;
+            order.CreatedAt = DateTime.Now;
+            orders.Add(order);
+            SaveAllOrders(orders);
+        }
+
+        public static void UpdateOrderStatus(int orderId, string newStatus)
+        {
+            var orders = GetAllOrders();
+            var target = orders.FirstOrDefault(o => o.Id == orderId);
+            if (target != null)
+            {
+                target.Status = newStatus;
+                SaveAllOrders(orders);
+            }
+        }
+
+        public static void DeleteOrder(int orderId)
+        {
+            var orders = GetAllOrders();
+            var target = orders.FirstOrDefault(o => o.Id == orderId);
+            if (target != null)
+            {
+                orders.Remove(target);
+                SaveAllOrders(orders);
+            }
+        }
+
+        private static void SaveAllOrders(List<Order> orders)
+        {
+            Directory.CreateDirectory(DataFolder);
+
+            using (StreamWriter writer = new StreamWriter(FilePath, false))
+            {
+                foreach (var order in orders)
+                {
+                    writer.WriteLine(Separator);
+                    writer.WriteLine("ЗАМОВЛЕННЯ");
+                    writer.WriteLine("ID: " + order.Id);
+                    writer.WriteLine("Дата: " + order.CreatedAt.ToString("dd.MM.yyyy HH:mm:ss"));
+                    writer.WriteLine("Клієнт: " + order.ClientName);
+                    writer.WriteLine("Телефон: " + order.Phone);
+                    writer.WriteLine("Email: " + order.Email);
+                    writer.WriteLine("Власне спорядження: " + order.HasEquipment);
+                    writer.WriteLine("Вага: " + order.Weight);
+                    writer.WriteLine("Зріст: " + order.Height);
+                    writer.WriteLine("Розмір взуття: " + order.ShoeSize);
+                    writer.WriteLine("Рівень: " + order.SkillLevel);
+                    writer.WriteLine("Лижі: " + order.Skis);
+                    writer.WriteLine("Черевики: " + order.Boots);
+                    writer.WriteLine("Палиці: " + order.Poles);
+                    writer.WriteLine("Днів абонемента: " + order.SkiPassDays);
+                    writer.WriteLine("Номер у готелі: " + order.HotelRoom);
+                    writer.WriteLine("Сніданок: " + (order.Breakfast ? "Так" : "Ні"));
+                    writer.WriteLine("Сауна: " + (order.Sauna ? "Так" : "Ні"));
+                    writer.WriteLine("Вартість: " + order.Cost);
+                    writer.WriteLine("Статус: " + order.Status);
+                    writer.WriteLine();
+                }
+            }
+        }
+
         private static string ReadValue(string block, string label)
         {
-            string[] lines = block.Split(
-                new[] { "\r\n", "\n" },
-                StringSplitOptions.None);
-
+            string[] lines = block.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
             foreach (string line in lines)
             {
                 string trimmedLine = line.Trim();
-
-                if (trimmedLine.StartsWith(
-                    label,
-                    StringComparison.OrdinalIgnoreCase))
+                if (trimmedLine.StartsWith(label, StringComparison.OrdinalIgnoreCase))
                 {
                     return trimmedLine.Substring(label.Length).Trim();
                 }
             }
-
             return "";
         }
 
-        private static int ReadInt(
-            string block,
-            string label,
-            int defaultValue)
+        private static int ReadInt(string block, string label, int defaultValue)
         {
             string value = ReadValue(block, label);
-            int result;
-
-            if (int.TryParse(value, out result))
+            if (int.TryParse(value, out int result))
             {
                 return result;
             }
-
-            return defaultValue;
-        }
-
-        private static double ReadDouble(
-            string block,
-            string label,
-            double defaultValue)
-        {
-            string value = ReadValue(block, label);
-            value = value.Replace("кг", "").Replace("см", "").Trim();
-
-            double result;
-
-            if (double.TryParse(
-                value,
-                NumberStyles.Any,
-                CultureInfo.CurrentCulture,
-                out result))
-            {
-                return result;
-            }
-
-            if (double.TryParse(
-                value,
-                NumberStyles.Any,
-                CultureInfo.InvariantCulture,
-                out result))
-            {
-                return result;
-            }
-
-            return defaultValue;
-        }
-
-        private static decimal ReadDecimal(
-            string block,
-            string label,
-            decimal defaultValue)
-        {
-            string value = ReadValue(block, label);
-            value = value.Replace("грн", "").Trim();
-
-            decimal result;
-
-            if (decimal.TryParse(
-                value,
-                NumberStyles.Any,
-                CultureInfo.CurrentCulture,
-                out result))
-            {
-                return result;
-            }
-
-            if (decimal.TryParse(
-                value,
-                NumberStyles.Any,
-                CultureInfo.InvariantCulture,
-                out result))
-            {
-                return result;
-            }
-
             return defaultValue;
         }
     }

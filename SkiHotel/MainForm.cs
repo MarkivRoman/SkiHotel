@@ -182,7 +182,6 @@ namespace SkiHotel
             {
                 form.ShowDialog(this);
             }
-            
         }
 
 
@@ -203,19 +202,18 @@ namespace SkiHotel
         }
 
         // =========================
-        // СТАТИСТИКА
+        // СТАТИСТИКА (ВІДГУКИ)
         // =========================
 
         private void BtnStatistics_Click(
             object sender,
             EventArgs e)
         {
-            MessageBox.Show(
-                "Тут буде статистика готелю.",
-                "Статистика",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
-            );
+            // Відкриваємо нашу форму відгуків та статистики клієнтів з файлу
+            using (ReviewsForm reviewsForm = new ReviewsForm())
+            {
+                reviewsForm.ShowDialog(this);
+            }
         }
 
         // =========================
