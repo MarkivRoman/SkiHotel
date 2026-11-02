@@ -13,9 +13,9 @@ namespace SkiHotel.Forms
     {
         private TabControl tabControl = new TabControl();
 
-        // Вкладки
-        private TabPage tabActive = new TabPage("Активні бронювання");
-        private TabPage tabIncoming = new TabPage("Вхідні заявки (Очікують оплати)");
+        // Tabs
+        private TabPage tabActive = new TabPage("Active Bookings");
+        private TabPage tabIncoming = new TabPage("Incoming Requests (Waiting for Payment)");
 
         private FlowLayoutPanel panelActiveContainer = new FlowLayoutPanel();
         private FlowLayoutPanel panelIncomingContainer = new FlowLayoutPanel();
@@ -25,14 +25,14 @@ namespace SkiHotel.Forms
 
         public ClientsForm()
         {
-            Text = "Керування бронюваннями — SKI HOTEL";
+            Text = "Booking Management — SKI HOTEL";
             StartPosition = FormStartPosition.CenterScreen;
             WindowState = FormWindowState.Maximized;
             MinimumSize = new Size(1000, 650);
             BackColor = Color.FromArgb(240, 245, 250);
             Font = new Font("Segoe UI", 10);
 
-            // Верхня панель зі заголовком та лічильником місць
+            // Top panel with title and capacity counter
             Panel topPanel = new Panel
             {
                 Dock = DockStyle.Top,
@@ -43,7 +43,7 @@ namespace SkiHotel.Forms
 
             Label title = new Label
             {
-                Text = "Панель керування клієнтами та бронями",
+                Text = "Client and Booking Management Panel",
                 Font = new Font("Segoe UI", 16, FontStyle.Bold),
                 ForeColor = Color.FromArgb(30, 60, 90),
                 Location = new Point(25, 20),
@@ -58,11 +58,11 @@ namespace SkiHotel.Forms
             topPanel.Controls.Add(title);
             topPanel.Controls.Add(lblCapacity);
 
-            // Налаштування TabControl (вкладок)
+            // Setup TabControl (tabs)
             tabControl.Dock = DockStyle.Fill;
             tabControl.Font = new Font("Segoe UI", 11, FontStyle.Bold);
 
-            // Налаштування контейнерів всередині вкладок
+            // Setup containers inside tabs
             SetupContainer(panelActiveContainer);
             SetupContainer(panelIncomingContainer);
 
@@ -90,18 +90,18 @@ namespace SkiHotel.Forms
         {
             var allOrders = OrderService.GetAllOrders();
 
-            // Фільтруємо за статусами
-            var activeOrders = allOrders.Where(o => o.Status == "Заброньовано" || string.IsNullOrEmpty(o.Status)).ToList();
-            var incomingOrders = allOrders.Where(o => o.Status == "Вхідні" || o.Status == "Очікує оплати").ToList();
+            // Filter by statuses
+            var activeOrders = allOrders.Where(o => o.Status == "Booked" || o.Status == "Заброньовано" || string.IsNullOrEmpty(o.Status)).ToList();
+            var incomingOrders = allOrders.Where(o => o.Status == "Incoming" || o.Status == "Waiting for Payment" || o.Status == "Вхідні" || o.Status == "Очікує оплати").ToList();
 
-            // Оновлюємо індикатор вільних місць (максимум 20)
+            // Update free spots indicator (maximum 20)
             int activeCount = activeOrders.Count;
             int freeSpots = Math.Max(0, MaxCapacity - activeCount);
-            lblCapacity.Text = $"Вільних місць: {freeSpots} з {MaxCapacity} (Зайнято: {activeCount})";
+            lblCapacity.Text = $"Free spots: {freeSpots} of {MaxCapacity} (Occupied: {activeCount})";
 
-            // Заповнюємо активні
+            // Populate active
             FillContainer(panelActiveContainer, activeOrders, true);
-            // Заповнюємо вхідні
+            // Populate incoming
             FillContainer(panelIncomingContainer, incomingOrders, false);
         }
 
@@ -113,7 +113,7 @@ namespace SkiHotel.Forms
             {
                 Label lblEmpty = new Label
                 {
-                    Text = "Список порожній.",
+                    Text = "List is empty.",
                     Font = new Font("Segoe UI", 13, FontStyle.Italic),
                     ForeColor = Color.Gray,
                     AutoSize = true,
@@ -147,7 +147,7 @@ namespace SkiHotel.Forms
                 }
             };
 
-            // Кругла аватарка з ініціалом
+            // Round avatar with initial
             PictureBox avatarBox = new PictureBox
             {
                 Size = new Size(50, 50),
@@ -170,7 +170,7 @@ namespace SkiHotel.Forms
                 }
             };
 
-            // ПІБ клієнта та контакти
+            // Client Name and contacts
             Label lblName = new Label
             {
                 Text = order.ClientName,
@@ -182,15 +182,15 @@ namespace SkiHotel.Forms
 
             Label lblContacts = new Label
             {
-                Text = $"Телефон: {order.Phone}  |  Email: {order.Email}",
+                Text = $"Phone: {order.Phone}  |  Email: {order.Email}",
                 Font = new Font("Segoe UI", 10, FontStyle.Regular),
                 ForeColor = Color.FromArgb(100, 110, 120),
                 Location = new Point(87, 45),
                 AutoSize = true
             };
 
-            // Деталі бронювання
-            string details = $"Абонемент: {order.Days} дн. | Спорядження: {order.HasEquipment} | Готель: {order.HotelRoom} | Вартість: {order.Cost}";
+            // Booking details
+            string details = $"Pass: {order.Days} days | Equipment: {order.HasEquipment} | Hotel: {order.HotelRoom} | Cost: {order.Cost}";
             Label lblDetails = new Label
             {
                 Text = details,
@@ -200,22 +200,22 @@ namespace SkiHotel.Forms
                 AutoSize = true
             };
 
-            // Дата заявки
+            // Request date
             Label lblDate = new Label
             {
-                Text = $"Заявка від: {order.CreatedAt:dd.MM.yyyy HH:mm}",
+                Text = $"Requested at: {order.CreatedAt:dd.MM.yyyy HH:mm}",
                 Font = new Font("Segoe UI", 9, FontStyle.Italic),
                 ForeColor = Color.Gray,
                 Location = new Point(650, 18),
                 AutoSize = true
             };
 
-            // Кнопка Ухвалити (тільки для вхідних)
+            // Approve button (only for incoming)
             if (!isActiveTab)
             {
                 Button btnApprove = new Button
                 {
-                    Text = "Ухвалити",
+                    Text = "Approve",
                     Location = new Point(650, 105),
                     Size = new Size(115, 32),
                     BackColor = Color.FromArgb(40, 140, 60),
@@ -226,21 +226,21 @@ namespace SkiHotel.Forms
                 btnApprove.FlatAppearance.BorderSize = 0;
                 btnApprove.Click += (s, e) =>
                 {
-                    int currentActive = OrderService.GetAllOrders().Where(o => o.Status == "Заброньовано" || string.IsNullOrEmpty(o.Status)).Count();
+                    int currentActive = OrderService.GetAllOrders().Where(o => o.Status == "Booked" || o.Status == "Заброньовано" || string.IsNullOrEmpty(o.Status)).Count();
                     if (currentActive >= MaxCapacity)
                     {
-                        MessageBox.Show("Досягнуто ліміт у 20 вільних місць! Неможливо ухвалити нове бронювання.", "Ліміт місць", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("The limit of 20 free spots has been reached! Cannot approve new booking.", "Capacity Limit", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
 
-                    OrderService.UpdateOrderStatus(order.Id, "Заброньовано");
+                    OrderService.UpdateOrderStatus(order.Id, "Booked");
                     LoadData();
                 };
                 card.Controls.Add(btnApprove);
             }
 
-            // Кнопка Видалити / Відхилити
-            string deleteBtnText = isActiveTab ? "Видалити" : "Відхилити";
+            // Delete / Reject button
+            string deleteBtnText = isActiveTab ? "Delete" : "Reject";
             Button btnDelete = new Button
             {
                 Text = deleteBtnText,
@@ -254,7 +254,7 @@ namespace SkiHotel.Forms
             btnDelete.FlatAppearance.BorderSize = 0;
             btnDelete.Click += (s, e) =>
             {
-                var result = MessageBox.Show($"Ви дійсно хочете {(isActiveTab ? "видалити" : "відхилити")} замовлення клієнта {order.ClientName}?", "Підтвердження", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var result = MessageBox.Show($"Are you sure you want to {(isActiveTab ? "delete" : "reject")} the order for client {order.ClientName}?", "Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (result == DialogResult.Yes)
                 {
                     OrderService.DeleteOrder(order.Id);
@@ -277,5 +277,4 @@ namespace SkiHotel.Forms
 
         }
     }
-
 }

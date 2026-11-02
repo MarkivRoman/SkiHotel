@@ -14,7 +14,7 @@ namespace SkiHotel.Forms
         private FlowLayoutPanel panelReviewsContainer = new FlowLayoutPanel();
         private Label lblAverage = new Label();
 
-        // Кнопки фільтрації
+        // Filtering buttons
         private Button btnFilterAll = new Button();
         private Button btnFilterGood = new Button();
         private Button btnFilterBad = new Button();
@@ -24,15 +24,15 @@ namespace SkiHotel.Forms
 
         public ReviewsForm()
         {
-            // Налаштування вікна
-            Text = "Відгуки клієнтів — SKI HOTEL";
+            // Window setup
+            Text = "Customer Reviews — SKI HOTEL";
             StartPosition = FormStartPosition.CenterScreen;
             WindowState = FormWindowState.Maximized;
             MinimumSize = new Size(950, 600);
             BackColor = Color.FromArgb(240, 245, 250);
             Font = new Font("Segoe UI", 10);
 
-            // Верхня панель (статистика та фільтри)
+            // Top panel (statistics and filters)
             Panel topPanel = new Panel
             {
                 Dock = DockStyle.Top,
@@ -43,23 +43,23 @@ namespace SkiHotel.Forms
 
             Label title = new Label
             {
-                Text = "Відгуки клієнтів",
+                Text = "Customer Reviews",
                 Font = new Font("Segoe UI", 18, FontStyle.Bold),
                 ForeColor = Color.FromArgb(30, 60, 90),
                 Location = new Point(25, 12),
                 AutoSize = true
             };
 
-            // Блок розрахунку середньої оцінки
+            // Average rating calculation block
             lblAverage.Location = new Point(25, 55);
             lblAverage.Font = new Font("Segoe UI", 11, FontStyle.Bold);
             lblAverage.ForeColor = Color.FromArgb(30, 100, 70);
             lblAverage.AutoSize = true;
 
-            // Кнопки фільтрів справа
-            btnFilterAll = CreateFilterButton("Всі", 350, true);
-            btnFilterGood = CreateFilterButton("🟢 Добрі (4-5)", 500, false);
-            btnFilterBad = CreateFilterButton("🔴 Погані (1-2)", 650, false);
+            // Filter buttons on the right
+            btnFilterAll = CreateFilterButton("All", 350, true);
+            btnFilterGood = CreateFilterButton("🟢 Good (4-5)", 500, false);
+            btnFilterBad = CreateFilterButton("🔴 Bad (1-2)", 650, false);
 
             btnFilterAll.Click += (s, e) => SetFilter("ALL", btnFilterAll);
             btnFilterGood.Click += (s, e) => SetFilter("GOOD", btnFilterGood);
@@ -71,7 +71,7 @@ namespace SkiHotel.Forms
             topPanel.Controls.Add(btnFilterGood);
             topPanel.Controls.Add(btnFilterBad);
 
-            // Контейнер для карток відгуків
+            // Container for review cards
             panelReviewsContainer.Dock = DockStyle.Fill;
             panelReviewsContainer.AutoScroll = true;
             panelReviewsContainer.BackColor = Color.FromArgb(240, 245, 250);
@@ -133,13 +133,13 @@ namespace SkiHotel.Forms
 
             if (allReviews == null || allReviews.Count == 0)
             {
-                lblAverage.Text = "Середня оцінка: немає даних";
+                lblAverage.Text = "Average rating: no data";
             }
             else
             {
                 double avgScore = allReviews.Average(r => r.Rating);
                 double percentage = (avgScore / 5.0) * 100.0;
-                lblAverage.Text = $"Загальна середня оцінка: {avgScore:0.1} / 5  ({percentage:0.0}%)";
+                lblAverage.Text = $"Overall average rating: {avgScore:0.1} / 5  ({percentage:0.0}%)";
             }
 
             DisplayFilteredReviews();
@@ -163,7 +163,7 @@ namespace SkiHotel.Forms
             {
                 Label lblEmpty = new Label
                 {
-                    Text = "За цим фільтром немає відгуків.",
+                    Text = "No reviews found for this filter.",
                     Font = new Font("Segoe UI", 13, FontStyle.Italic),
                     ForeColor = Color.Gray,
                     AutoSize = true,
@@ -220,7 +220,7 @@ namespace SkiHotel.Forms
                 }
             };
 
-            // Кругла іконка-аватарка з першою літерою імені клієнта
+            // Round avatar icon with the first letter of the client's name
             PictureBox avatarBox = new PictureBox
             {
                 Size = new Size(45, 45),
@@ -243,7 +243,7 @@ namespace SkiHotel.Forms
                 }
             };
 
-            // Нік клієнта
+            // Client name
             Label lblName = new Label
             {
                 Text = review.ClientName,
@@ -253,7 +253,7 @@ namespace SkiHotel.Forms
                 AutoSize = true
             };
 
-            // Зірочки оцінки
+            // Rating stars
             string stars = new string('★', review.Rating) + new string('☆', 5 - review.Rating);
             Label lblStars = new Label
             {
@@ -264,7 +264,7 @@ namespace SkiHotel.Forms
                 AutoSize = true
             };
 
-            // Дата маленьким шрифтом у куточку
+            // Date in small font in the corner
             Label lblDate = new Label
             {
                 Text = review.CreatedAt.ToString("dd.MM.yyyy HH:mm"),
@@ -274,10 +274,10 @@ namespace SkiHotel.Forms
                 AutoSize = true
             };
 
-            // Текст коментаря
+            // Comment text
             Label lblComment = new Label
             {
-                Text = string.IsNullOrWhiteSpace(review.Comment) ? "Без коментаря" : $"\"{review.Comment}\"",
+                Text = string.IsNullOrWhiteSpace(review.Comment) ? "No comment" : $"\"{review.Comment}\"",
                 Font = new Font("Segoe UI", 11, FontStyle.Italic),
                 ForeColor = Color.FromArgb(50, 60, 70),
                 Location = new Point(78, 56),

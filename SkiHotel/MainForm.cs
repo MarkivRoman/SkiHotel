@@ -25,7 +25,7 @@ namespace SkiHotel
 
         private void CreateMainMenu()
         {
-            // Налаштування головного вікна
+            // Window setup
             this.Text = "SKI HOTEL";
             this.StartPosition = FormStartPosition.CenterScreen;
             this.Size = new Size(900, 600);
@@ -33,7 +33,7 @@ namespace SkiHotel
             this.BackColor = Color.FromArgb(235, 242, 248);
 
             // =========================
-            // ЗАГОЛОВОК
+            // TITLE
             // =========================
 
             lblTitle = new Label();
@@ -52,13 +52,13 @@ namespace SkiHotel
             this.Controls.Add(lblTitle);
 
             // =========================
-            // ПІДЗАГОЛОВОК
+            // SUBTITLE
             // =========================
 
             lblSubtitle = new Label();
 
             lblSubtitle.Text =
-                "Система керування відпочинком на гірськолижному курорті";
+                "Ski resort vacation management system";
 
             lblSubtitle.Font = new Font(
                 "Segoe UI",
@@ -75,35 +75,35 @@ namespace SkiHotel
             this.Controls.Add(lblSubtitle);
 
             // =========================
-            // КНОПКИ
+            // BUTTONS
             // =========================
 
             btnNewOrder = CreateMenuButton(
-                "НОВЕ ЗАМОВЛЕННЯ",
+                "NEW ORDER",
                 new Point(60, 160)
             );
 
             btnClients = CreateMenuButton(
-                "КЛІЄНТИ",
+                "CLIENTS",
                 new Point(460, 160)
             );
 
             btnEquipment = CreateMenuButton(
-                "СПОРЯДЖЕННЯ",
+                "EQUIPMENT",
                 new Point(60, 280)
             );
 
             btnStatistics = CreateMenuButton(
-                "СТАТИСТИКА",
+                "STATISTICS",
                 new Point(460, 280)
             );
 
             btnExit = CreateMenuButton(
-                "ВИХІД",
+                "EXIT",
                 new Point(260, 410)
             );
 
-            // Додаємо кнопки на форму
+            // Add buttons to the form
 
             this.Controls.Add(btnNewOrder);
             this.Controls.Add(btnClients);
@@ -112,7 +112,7 @@ namespace SkiHotel
             this.Controls.Add(btnExit);
 
             // =========================
-            // ПОДІЇ КНОПОК
+            // BUTTON EVENTS
             // =========================
 
             btnNewOrder.Click += BtnNewOrder_Click;
@@ -123,7 +123,7 @@ namespace SkiHotel
         }
 
         // =========================
-        // СТВОРЕННЯ КНОПКИ
+        // CREATE BUTTON
         // =========================
 
         private Button CreateMenuButton(
@@ -159,7 +159,7 @@ namespace SkiHotel
         }
 
         // =========================
-        // НОВЕ ЗАМОВЛЕННЯ
+        // NEW ORDER
         // =========================
 
         private void BtnNewOrder_Click(
@@ -173,7 +173,7 @@ namespace SkiHotel
         }
 
         // =========================
-        // КЛІЄНТИ
+        // CLIENTS
         // =========================
 
         private void BtnClients_Click(object sender, EventArgs e)
@@ -186,7 +186,7 @@ namespace SkiHotel
 
 
         // =========================
-        // СПОРЯДЖЕННЯ
+        // EQUIPMENT
         // =========================
 
         private void BtnEquipment_Click(
@@ -194,22 +194,22 @@ namespace SkiHotel
             EventArgs e)
         {
             MessageBox.Show(
-                "Тут буде інформація про лижі, черевики та палки.",
-                "Спорядження",
+                "Information about skis, boots, and poles will be here.",
+                "Equipment",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information
             );
         }
 
         // =========================
-        // СТАТИСТИКА (ВІДГУКИ)
+        // STATISTICS (REVIEWS)
         // =========================
 
         private void BtnStatistics_Click(
             object sender,
             EventArgs e)
         {
-            // Відкриваємо нашу форму відгуків та статистики клієнтів з файлу
+            // Open our client reviews and statistics form from file
             using (ReviewsForm reviewsForm = new ReviewsForm())
             {
                 reviewsForm.ShowDialog(this);
@@ -217,7 +217,7 @@ namespace SkiHotel
         }
 
         // =========================
-        // ВИХІД
+        // EXIT
         // =========================
 
         private void BtnExit_Click(

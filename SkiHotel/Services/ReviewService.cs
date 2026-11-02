@@ -29,12 +29,12 @@ namespace SkiHotel.Services
             using (StreamWriter writer = new StreamWriter(FilePath, true))
             {
                 writer.WriteLine(Separator);
-                writer.WriteLine("ВІДГУК");
+                writer.WriteLine("REVIEW");
                 writer.WriteLine("ID: " + review.Id);
-                writer.WriteLine("Дата: " + review.CreatedAt);
-                writer.WriteLine("Клієнт: " + review.ClientName);
-                writer.WriteLine("Оцінка: " + review.Rating + "/5");
-                writer.WriteLine("Коментар: " + review.Comment);
+                writer.WriteLine("Date: " + review.CreatedAt);
+                writer.WriteLine("Client: " + review.ClientName);
+                writer.WriteLine("Rating: " + review.Rating + "/5");
+                writer.WriteLine("Comment: " + review.Comment);
                 writer.WriteLine();
             }
         }
@@ -60,23 +60,23 @@ namespace SkiHotel.Services
 
             foreach (string block in blocks)
             {
-                if (!block.Contains("Клієнт:"))
+                if (!block.Contains("Client:") && !block.Contains("Клієнт:"))
                 {
                     continue;
                 }
 
                 Review review = new Review();
-                review.Id = ReadInt(block, "ID:", 0);
+                review.Id = ReadInt(block, "ID:", "ID:", 0);
 
-                string dateText = ReadValue(block, "Дата:");
+                string dateText = ReadValue(block, "Date:", "Дата:");
                 if (DateTime.TryParse(dateText, out DateTime createdAt))
                 {
                     review.CreatedAt = createdAt;
                 }
 
-                review.ClientName = ReadValue(block, "Клієнт:");
-                review.Rating = ReadInt(block, "Оцінка:", 5);
-                review.Comment = ReadValue(block, "Коментар:");
+                review.ClientName = ReadValue(block, "Client:", "Клієнт:");
+                review.Rating = ReadInt(block, "Rating:", "Оцінка:", 5);
+                review.Comment = ReadValue(block, "Comment:", "Коментар:");
 
                 reviews.Add(review);
             }
@@ -84,23 +84,26 @@ namespace SkiHotel.Services
             return reviews.OrderBy(x => x.Id).ToList();
         }
 
-        private static string ReadValue(string block, string label)
+        private static string ReadValue(string block, params string[] labels)
         {
             string[] lines = block.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
             foreach (string line in lines)
             {
                 string trimmedLine = line.Trim();
-                if (trimmedLine.StartsWith(label, StringComparison.OrdinalIgnoreCase))
+                foreach (string label in labels)
                 {
-                    return trimmedLine.Substring(label.Length).Trim();
+                    if (trimmedLine.StartsWith(label, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return trimmedLine.Substring(label.Length).Trim();
+                    }
                 }
             }
             return "";
         }
 
-        private static int ReadInt(string block, string label, int defaultValue)
+        private static int ReadInt(string block, string labelEn, string labelUa, int defaultValue)
         {
-            string value = ReadValue(block, label);
+            string value = ReadValue(block, labelEn, labelUa);
             if (value.Contains("/"))
             {
                 value = value.Split('/')[0].Trim();

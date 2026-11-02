@@ -37,57 +37,57 @@ namespace SkiHotel.Services
 
             foreach (string block in blocks)
             {
-                if (!block.Contains("Клієнт:"))
+                if (!block.Contains("Client:") && !block.Contains("Клієнт:"))
                 {
                     continue;
                 }
 
                 Order order = new Order();
-                order.Id = ReadInt(block, "ID:", 0);
+                order.Id = ReadInt(block, "ID:", "ID:", 0);
 
-                string dateText = ReadValue(block, "Дата:");
+                string dateText = ReadValue(block, "Date:", "Дата:");
                 if (DateTime.TryParse(dateText, out DateTime createdAt))
                 {
                     order.CreatedAt = createdAt;
                 }
 
-                order.ClientName = ReadValue(block, "Клієнт:");
-                order.Phone = ReadValue(block, "Телефон:");
-                order.Email = ReadValue(block, "Email:");
-                order.HasEquipment = ReadValue(block, "Власне спорядження:");
-                order.Weight = ReadValue(block, "Вага:");
-                order.Height = ReadValue(block, "Зріст:");
-                order.ShoeSize = ReadValue(block, "Розмір взуття:");
+                order.ClientName = ReadValue(block, "Client:", "Клієнт:");
+                order.Phone = ReadValue(block, "Phone:", "Телефон:");
+                order.Email = ReadValue(block, "Email:", "Email:");
+                order.HasEquipment = ReadValue(block, "Own equipment:", "Власне спорядження:");
+                order.Weight = ReadValue(block, "Weight:", "Вага:");
+                order.Height = ReadValue(block, "Height:", "Зріст:");
+                order.ShoeSize = ReadValue(block, "Shoe size:", "Розмір взуття:");
 
-                string level = ReadValue(block, "Рівень:");
+                string level = ReadValue(block, "Skill level:", "Рівень:");
                 order.SkillLevel = level;
                 order.Level = level;
 
-                order.Skis = ReadValue(block, "Лижі:");
-                order.Boots = ReadValue(block, "Черевики:");
-                order.Poles = ReadValue(block, "Палиці:");
+                order.Skis = ReadValue(block, "Skis:", "Лижі:");
+                order.Boots = ReadValue(block, "Boots:", "Черевики:");
+                order.Poles = ReadValue(block, "Poles:", "Палиці:");
 
-                int days = ReadInt(block, "Днів абонемента:", 1);
+                int days = ReadInt(block, "Ski pass days:", "Днів абонемента:", 1);
                 order.SkiPassDays = days;
                 order.Days = days;
 
-                order.HotelRoom = ReadValue(block, "Номер у готелі:");
+                order.HotelRoom = ReadValue(block, "Hotel room:", "Номер у готелі:");
 
-                string breakfastStr = ReadValue(block, "Сніданок:");
-                order.Breakfast = (breakfastStr == "Так" || breakfastStr == "True");
+                string breakfastStr = ReadValue(block, "Breakfast:", "Сніданок:");
+                order.Breakfast = (breakfastStr == "Yes" || breakfastStr == "Так" || breakfastStr == "True");
 
-                string saunaStr = ReadValue(block, "Сауна:");
-                order.Sauna = (saunaStr == "Так" || saunaStr == "True");
+                string saunaStr = ReadValue(block, "Sauna:", "Сауна:");
+                order.Sauna = (saunaStr == "Yes" || saunaStr == "Так" || saunaStr == "True");
 
-                string costStr = ReadValue(block, "Вартість:");
+                string costStr = ReadValue(block, "Cost:", "Вартість:");
                 order.Cost = costStr;
-                if (decimal.TryParse(costStr.Replace(" грн", "").Trim(), out decimal price))
+                if (decimal.TryParse(costStr.Replace(" UAH", "").Replace(" грн", "").Trim(), out decimal price))
                 {
                     order.TotalPrice = price;
                 }
 
-                string status = ReadValue(block, "Статус:");
-                order.Status = string.IsNullOrWhiteSpace(status) ? "Заброньовано" : status;
+                string status = ReadValue(block, "Status:", "Статус:");
+                order.Status = string.IsNullOrWhiteSpace(status) ? "Booked" : status;
 
                 orders.Add(order);
             }
@@ -135,48 +135,51 @@ namespace SkiHotel.Services
                 foreach (var order in orders)
                 {
                     writer.WriteLine(Separator);
-                    writer.WriteLine("ЗАМОВЛЕННЯ");
+                    writer.WriteLine("ORDER");
                     writer.WriteLine("ID: " + order.Id);
-                    writer.WriteLine("Дата: " + order.CreatedAt.ToString("dd.MM.yyyy HH:mm:ss"));
-                    writer.WriteLine("Клієнт: " + order.ClientName);
-                    writer.WriteLine("Телефон: " + order.Phone);
+                    writer.WriteLine("Date: " + order.CreatedAt.ToString("dd.MM.yyyy HH:mm:ss"));
+                    writer.WriteLine("Client: " + order.ClientName);
+                    writer.WriteLine("Phone: " + order.Phone);
                     writer.WriteLine("Email: " + order.Email);
-                    writer.WriteLine("Власне спорядження: " + order.HasEquipment);
-                    writer.WriteLine("Вага: " + order.Weight);
-                    writer.WriteLine("Зріст: " + order.Height);
-                    writer.WriteLine("Розмір взуття: " + order.ShoeSize);
-                    writer.WriteLine("Рівень: " + order.SkillLevel);
-                    writer.WriteLine("Лижі: " + order.Skis);
-                    writer.WriteLine("Черевики: " + order.Boots);
-                    writer.WriteLine("Палиці: " + order.Poles);
-                    writer.WriteLine("Днів абонемента: " + order.SkiPassDays);
-                    writer.WriteLine("Номер у готелі: " + order.HotelRoom);
-                    writer.WriteLine("Сніданок: " + (order.Breakfast ? "Так" : "Ні"));
-                    writer.WriteLine("Сауна: " + (order.Sauna ? "Так" : "Ні"));
-                    writer.WriteLine("Вартість: " + order.Cost);
-                    writer.WriteLine("Статус: " + order.Status);
+                    writer.WriteLine("Own equipment: " + order.HasEquipment);
+                    writer.WriteLine("Weight: " + order.Weight);
+                    writer.WriteLine("Height: " + order.Height);
+                    writer.WriteLine("Shoe size: " + order.ShoeSize);
+                    writer.WriteLine("Skill level: " + order.SkillLevel);
+                    writer.WriteLine("Skis: " + order.Skis);
+                    writer.WriteLine("Boots: " + order.Boots);
+                    writer.WriteLine("Poles: " + order.Poles);
+                    writer.WriteLine("Ski pass days: " + order.SkiPassDays);
+                    writer.WriteLine("Hotel room: " + order.HotelRoom);
+                    writer.WriteLine("Breakfast: " + (order.Breakfast ? "Yes" : "No"));
+                    writer.WriteLine("Sauna: " + (order.Sauna ? "Yes" : "No"));
+                    writer.WriteLine("Cost: " + order.Cost);
+                    writer.WriteLine("Status: " + order.Status);
                     writer.WriteLine();
                 }
             }
         }
 
-        private static string ReadValue(string block, string label)
+        private static string ReadValue(string block, params string[] labels)
         {
             string[] lines = block.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
             foreach (string line in lines)
             {
                 string trimmedLine = line.Trim();
-                if (trimmedLine.StartsWith(label, StringComparison.OrdinalIgnoreCase))
+                foreach (string label in labels)
                 {
-                    return trimmedLine.Substring(label.Length).Trim();
+                    if (trimmedLine.StartsWith(label, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return trimmedLine.Substring(label.Length).Trim();
+                    }
                 }
             }
             return "";
         }
 
-        private static int ReadInt(string block, string label, int defaultValue)
+        private static int ReadInt(string block, string labelEn, string labelUa, int defaultValue)
         {
-            string value = ReadValue(block, label);
+            string value = ReadValue(block, labelEn, labelUa);
             if (int.TryParse(value, out int result))
             {
                 return result;
