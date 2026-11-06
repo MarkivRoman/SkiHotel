@@ -1,0 +1,37 @@
+﻿{
+  "BotStarted": "SkiHotel bot successfully started!",
+  "BotStartError": "Bot start error: {0}",
+  "BotProcessError": "Message processing error: {0}",
+  "BotError": "Bot error: {0}",
+
+  "MenuProfile": "👤 My Profile",
+  "MenuEditData": "✏️ Fill / Edit Data",
+  "MenuOrder": "⛷️ Order / Pay",
+  "MenuAbout": "ℹ️ About Us",
+  "MenuMain": "🏠 Main Menu",
+  "MenuLanguage": "🌐 Change Language",
+  "MenuAdmin": "📊 Admin Panel",
+
+  "CmdStart": "/start",
+  "CmdAdmin": "/admin",
+
+  "WelcomeMessage": "Welcome to SkiHotel! 🏔️\nSelect an action from the menu below:",
+  "ChooseLanguagePrompt": "Please choose your language / Будь ласка, оберіть мову інтерфейсу:",
+  "LanguageSelected": "Language successfully changed to English! 🇬🇧",
+
+  "ProfileFormat": "📋 *Your Profile at SkiHotel:*\n\n• Name: {0}\n• Phone: {1}\n• Email: {2}\n• Height: {3} cm\n• Weight: {4} kg\n• Shoe size: {5}\n• Skill level: {6}",
+  "AboutText": "🏔️ *About SkiHotel Complex*\n\nWelcome to SkiHotel — your perfect winter getaway, delivering experiences on par with top European resorts!\n\nWe are much more than just a modern rental for perfectly tuned ski equipment. SkiHotel is a comprehensive resort for an unforgettable vacation. What awaits you:\n🛌 Cozy rooms with panoramic views of snow-capped peaks;\n🍽️ Incredibly delicious signature and traditional cuisine in our restaurant;\n🔥 A warm atmosphere and pure relaxation after an active day on the slopes.\n\nWe have been creating mountain magic and taking care of your comfort since *2018*. According to our latest independent quality audit, our complex received a top-tier rating of *4.8 out of 5* ⭐\n\nCome for the memories, and leave the details to us!\n\n📞 *Reservations & Info:* +380945176677",
+
+  "PromptName": "Enter your *Full Name*:",
+  "PromptPhone": "Enter your *Phone Number*:",
+  "PromptEmail": "Enter your *Email*:",
+  "PromptHeight": "Specify your *Height (cm)*:",
+  "PromptWeight": "Specify your *Weight (kg)*:",
+  "PromptShoe": "Specify your *Shoe Size*:",
+  "DataSaved": "✅ *Data successfully saved!* Now you can place orders faster without waiting.",
+
+  "AdminStats": "📈 *SkiHotel Statistics:*\n\nTotal users in bot: *{0}*",
+  "AdminAccessDenied": "⛔ You do not have administrator rights.",
+  "DefaultNotSpecified": "Not specified",
+  "DefaultBeginner": "Beginner"
+}
