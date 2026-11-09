@@ -14,6 +14,7 @@ namespace SkiHotel
         [STAThread]
         static void Main()
         {
+            TelegramBotHandler.StartBot();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainForm());

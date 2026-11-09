@@ -189,16 +189,18 @@ namespace SkiHotel
         // EQUIPMENT
         // =========================
 
+        // =========================
+        // EQUIPMENT
+        // =========================
+
         private void BtnEquipment_Click(
             object sender,
             EventArgs e)
         {
-            MessageBox.Show(
-                "Information about skis, boots, and poles will be here.",
-                "Equipment",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
-            );
+            using (EquipmentForm equipmentForm = new EquipmentForm())
+            {
+                equipmentForm.ShowDialog(this);
+            }
         }
 
         // =========================
