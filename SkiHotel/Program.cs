@@ -1,19 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace SkiHotel
 {
     static class Program
     {
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
         [STAThread]
         static void Main()
         {
+            // Гарантовано створюємо БД та всі таблиці до запуску бота і форм
+            Database.InitializeDatabase();
+
             TelegramBotHandler.StartBot();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);

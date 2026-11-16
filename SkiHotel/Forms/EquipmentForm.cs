@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Drawing;
-using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -10,33 +10,15 @@ namespace SkiHotel
     public partial class EquipmentForm : Form
     {
         private TabControl tabControlMain;
-        private string dataFilePath;
         private Dictionary<string, TextBox> quantityInputs = new Dictionary<string, TextBox>();
 
         public EquipmentForm()
         {
             InitializeComponent();
-            InitEquipmentSystem();
-        }
-
-        private void InitEquipmentSystem()
-        {
-            // Шлях до Data/equipment.txt
-            string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
-            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-            dataFilePath = Path.Combine(dir, "equipment.txt");
-
-            // Якщо файлу немає, створюємо з мінімальним шаблоном, щоб структура не була пустою
-            if (!File.Exists(dataFilePath))
-            {
-                File.WriteAllText(dataFilePath, "Skies and Poles | Beginner | Sample Ski Item | 10\n");
-            }
-
             LoadAndBuildUI();
         }
 
         private void LoadAndBuildUI()
-        
         {
             // Очищаємо попередні контроли, якщо відбулося оновлення
             foreach (Control c in this.Controls.Cast<Control>().ToList())
@@ -48,21 +30,23 @@ namespace SkiHotel
 
             tabControlMain = new TabControl { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10, FontStyle.Regular) };
 
-            // Читаємо дані ВИКЛЮЧНО з текстового файлу
-            var lines = File.ReadAllLines(dataFilePath);
+            // Читаємо дані ВИКЛЮЧНО з бази даних SQL Server
             var inventory = new Dictionary<string, Dictionary<string, Dictionary<string, int>>>();
 
-            foreach (var line in lines)
+            using (var conn = Database.GetConnection())
             {
-                if (string.IsNullOrWhiteSpace(line)) continue;
-                var parts = line.Split('|');
-                if (parts.Length >= 4)
+                conn.Open();
+                string query = "SELECT Category, SubCategory, ItemName, Quantity FROM EquipmentInventory ORDER BY Id ASC";
+                using (var cmd = new SqlCommand(query, conn))
+                using (var reader = cmd.ExecuteReader())
                 {
-                    string cat = parts[0].Trim();
-                    string sub = parts[1].Trim();
-                    string name = parts[2].Trim();
-                    if (int.TryParse(parts[3].Trim(), out int qty))
+                    while (reader.Read())
                     {
+                        string cat = reader["Category"].ToString();
+                        string sub = reader["SubCategory"].ToString();
+                        string name = reader["ItemName"].ToString();
+                        int qty = Convert.ToInt32(reader["Quantity"]);
+
                         if (!inventory.ContainsKey(cat)) inventory[cat] = new Dictionary<string, Dictionary<string, int>>();
                         if (!inventory[cat].ContainsKey(sub)) inventory[cat][sub] = new Dictionary<string, int>();
                         inventory[cat][sub][name] = qty;
@@ -70,7 +54,7 @@ namespace SkiHotel
                 }
             }
 
-            // Динамічне створення вкладок на основі категорій з файлу
+            // Динамічне створення вкладок на основі категорій з БД
             foreach (var catPair in inventory)
             {
                 string categoryName = catPair.Key;
@@ -93,15 +77,17 @@ namespace SkiHotel
             Panel panelBottom = new Panel { Height = 55, Dock = DockStyle.Bottom, BackColor = Color.FromArgb(240, 240, 240) };
             Button btnSave = new Button
             {
-                Text = "Save Changes to File",
-                Width = 200,
+                Text = "Save Changes to Database",
+                Width = 220,
                 Height = 35,
                 Location = new Point(15, 10),
                 BackColor = Color.FromArgb(46, 204, 113),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
             };
+            btnSave.FlatAppearance.BorderSize = 0;
             btnSave.Click += BtnSave_Click;
             panelBottom.Controls.Add(btnSave);
             this.Controls.Add(panelBottom);
@@ -135,8 +121,9 @@ namespace SkiHotel
 
                 quantityInputs[uniqueKey] = txtQty;
 
-                Button btnPlus = new Button { Text = "+1", Width = 45, Height = 26, Tag = txtQty, FlatStyle = FlatStyle.Flat };
-                btnPlus.Click += (s, e) => {
+                Button btnPlus = new Button { Text = "+1", Width = 45, Height = 26, Tag = txtQty, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
+                btnPlus.Click += (s, e) =>
+                {
                     var tb = (TextBox)((Button)s).Tag;
                     if (int.TryParse(tb.Text, out int v)) tb.Text = (v + 1).ToString();
                 };
@@ -153,27 +140,41 @@ namespace SkiHotel
 
         private void BtnSave_Click(object sender, EventArgs e)
         {
-            var newLines = new List<string>();
-            foreach (var kvp in quantityInputs)
+            using (var conn = Database.GetConnection())
             {
-                string[] parts = kvp.Key.Split('|');
-                if (parts.Length == 3)
+                conn.Open();
+                foreach (var kvp in quantityInputs)
                 {
-                    string cat = parts[0];
-                    string sub = parts[1];
-                    string name = parts[2];
-                    string qty = kvp.Value.Text;
-                    newLines.Add($"{cat} | {sub} | {name} | {qty}");
+                    string[] parts = kvp.Key.Split('|');
+                    if (parts.Length == 3 && int.TryParse(kvp.Value.Text.Trim(), out int newQty))
+                    {
+                        string cat = parts[0];
+                        string sub = parts[1];
+                        string name = parts[2];
+
+                        string updateQuery = @"
+                            UPDATE EquipmentInventory 
+                            SET Quantity = @Qty 
+                            WHERE Category = @Cat AND SubCategory = @Sub AND ItemName = @Name";
+
+                        using (var cmd = new SqlCommand(updateQuery, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@Qty", newQty);
+                            cmd.Parameters.AddWithValue("@Cat", cat);
+                            cmd.Parameters.AddWithValue("@Sub", sub);
+                            cmd.Parameters.AddWithValue("@Name", name);
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
                 }
             }
-            File.WriteAllLines(dataFilePath, newLines);
-            MessageBox.Show("Inventory successfully updated and saved to equipment.txt!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            LoadAndBuildUI(); // Перезавантажуємо інтерфейс з оновленого файлу
+
+            MessageBox.Show("Inventory successfully updated and saved to SQL Database!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            LoadAndBuildUI();
         }
 
         private void EquipmentForm_Load(object sender, EventArgs e)
         {
-
         }
     }
 }

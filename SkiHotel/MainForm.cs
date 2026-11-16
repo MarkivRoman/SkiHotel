@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data.SqlClient;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using SkiHotel.Forms;
 
@@ -8,11 +9,27 @@ namespace SkiHotel
 {
     public partial class MainForm : Form
     {
+        // Верхня панель навігації (завжди зверху для всіх форм)
+        private Panel topNavBar;
+        private Button btnBackToMenu;
+        private Button btnLanguage;
+        private ContextMenuStrip langMenu;
+        private Button btnRefresh;
+        private Button btnSwitchUser;
+        private Button btnTopExit;
+
+        // Робоча область під верхньою панеллю
+        private Panel workspacePanel;
+
+        // Панель самого Головного Меню
+        private Panel mainMenuContainer;
+        private Form activeChildForm = null;
+
+        // Елементи Головного Меню
         private Button btnNewOrder;
         private Button btnClients;
         private Button btnEquipment;
         private Button btnStatistics;
-        private Button btnExit;
 
         private Label lblAvatar;
         private Label lblUserStatus;
@@ -27,138 +44,305 @@ namespace SkiHotel
         {
             InitializeComponent();
             Database.InitializeDatabase();
-            CreateMainMenu();
+            SetupShellAndMenu();
         }
 
-        private void CreateMainMenu()
+        private void SetupShellAndMenu()
         {
-            this.Text = "SKI HOTEL — Terminal Dashboard";
+            // Налаштування головного вікна: по центру, на весь екран
+            this.Text = "SKI HOTEL — Enterprise Terminal";
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.Size = new Size(880, 620);
-            this.MinimumSize = new Size(800, 550);
+            this.WindowState = FormWindowState.Maximized;
+            this.MinimumSize = new Size(1024, 700);
             this.BackColor = Color.FromArgb(242, 246, 250);
-            this.MaximizeBox = false;
 
-            // ==========================================
-            // ЛІВА ПАНЕЛЬ (Повністю темно-синя вертикальна смуга)
-            // ==========================================
-            Panel leftPanel = new Panel()
+            // ========================================================
+            // 1. ВЕРХНЯ ПАНЕЛЬ НАВІГАЦІЇ (Завжди зверху для всіх форм)
+            // ========================================================
+            topNavBar = new Panel()
+            {
+                Dock = DockStyle.Top,
+                Height = 58,
+                BackColor = Color.FromArgb(12, 28, 48) // Глибокий темний фон панелі
+            };
+            this.Controls.Add(topNavBar);
+
+            // Кнопка "Повернутись на головне меню" (зліва)
+            btnBackToMenu = new Button()
+            {
+                Text = "←  Back to Main Menu",
+                Location = new Point(20, 11),
+                Size = new Size(215, 36),
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                BackColor = Color.FromArgb(25, 110, 185),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Visible = false // На головному меню прихована, з'являється у дочірніх формах
+            };
+            btnBackToMenu.FlatAppearance.BorderSize = 0;
+            btnBackToMenu.FlatAppearance.MouseOverBackColor = Color.FromArgb(35, 130, 210);
+            btnBackToMenu.Click += (s, e) => ReturnToMainMenu();
+            topNavBar.Controls.Add(btnBackToMenu);
+
+            // Контейнер для правих кнопок із фіксованою шириною та чіткими відступами
+            Panel rightButtonsPanel = new Panel()
+            {
+                Size = new Size(560, 58),
+                Location = new Point(topNavBar.Width - 560, 0),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor = Color.Transparent
+            };
+            topNavBar.Controls.Add(rightButtonsPanel);
+
+            // 1. Кнопка зміни мови (з випадаючим меню-заглушкою)
+            langMenu = new ContextMenuStrip();
+            langMenu.Items.Add("🇺🇦 Українська мова");
+            langMenu.Items.Add("🇬🇧 English language");
+
+            btnLanguage = CreateNavButton("🌐 Language ▾", Color.FromArgb(20, 42, 68), new Point(10, 11), 135);
+            btnLanguage.Click += (s, e) =>
+            {
+                langMenu.Show(btnLanguage, new Point(0, btnLanguage.Height));
+            };
+            rightButtonsPanel.Controls.Add(btnLanguage);
+
+            // 2. Кнопка Оновити (візуальне оновлення)
+            btnRefresh = CreateNavButton("🔄 Refresh", Color.FromArgb(20, 42, 68), new Point(157, 11), 115);
+            btnRefresh.Click += (s, e) =>
+            {
+                this.Refresh();
+                if (activeChildForm != null) activeChildForm.Refresh();
+
+                string oldText = btnRefresh.Text;
+                btnRefresh.Text = "✓ Updated";
+                Timer t = new Timer() { Interval = 800 };
+                t.Tick += (ts, te) => { btnRefresh.Text = oldText; t.Stop(); t.Dispose(); };
+                t.Start();
+            };
+            rightButtonsPanel.Controls.Add(btnRefresh);
+
+            // 3. Кнопка Змінити користувача (з фігуркою людини)
+            btnSwitchUser = CreateNavButton("👤 Switch User", Color.FromArgb(20, 42, 68), new Point(284, 11), 150);
+            btnSwitchUser.Click += (s, e) =>
+            {
+                ReturnToMainMenu();
+                SetButtonsAccess(false);
+                ShowLoginDialog();
+            };
+            rightButtonsPanel.Controls.Add(btnSwitchUser);
+
+            // 4. Червона кнопка Виходу (темно-бордова, підсвічується червоним)
+            btnTopExit = CreateNavButton("✕ Exit", Color.FromArgb(165, 32, 32), new Point(446, 11), 95);
+            btnTopExit.FlatAppearance.BorderColor = Color.FromArgb(200, 50, 50);
+            btnTopExit.FlatAppearance.MouseOverBackColor = Color.FromArgb(205, 40, 40);
+            btnTopExit.Click += (s, e) => Application.Exit();
+            rightButtonsPanel.Controls.Add(btnTopExit);
+
+            // ========================================================
+            // 2. РОБОЧА ОБЛАСТЬ ПІД ВЕРХНЬОЮ ПАНЕЛЛЮ
+            // ========================================================
+            workspacePanel = new Panel()
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(242, 246, 250)
+            };
+            this.Controls.Add(workspacePanel);
+            workspacePanel.BringToFront();
+
+            // ========================================================
+            // 3. КОНТЕЙНЕР ГОЛОВНОГО МЕНЮ (Вставляється у workspacePanel)
+            // ========================================================
+            mainMenuContainer = new Panel()
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(242, 246, 250)
+            };
+            workspacePanel.Controls.Add(mainMenuContainer);
+
+            // Ліва темно-синя смуга
+            Panel leftBlueStripe = new Panel()
             {
                 Dock = DockStyle.Left,
-                Width = 200,
+                Width = 240,
                 BackColor = Color.FromArgb(20, 45, 75)
             };
-            this.Controls.Add(leftPanel);
+            mainMenuContainer.Controls.Add(leftBlueStripe);
 
-            // ==========================================
-            // ПРАВА ПАНЕЛЬ (ОСНОВНИЙ КОНТЕНТ)
-            // ==========================================
+            // Права частина головного меню
+            Panel menuContentArea = new Panel()
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(40)
+            };
+            mainMenuContainer.Controls.Add(menuContentArea);
+            menuContentArea.BringToFront();
 
-            // Кружечок з першою літерою (Аватарка у верхньому правому/центральному блоці)
+            // Аватарка з першою літерою
             lblAvatar = new Label()
             {
-                Size = new Size(50, 50),
-                Location = new Point(230, 25),
+                Size = new Size(55, 55),
+                Location = new Point(40, 30),
                 BackColor = Color.FromArgb(30, 135, 225),
                 ForeColor = Color.White,
-                Font = new Font("Segoe UI", 16, FontStyle.Bold),
+                Font = new Font("Segoe UI", 18, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleCenter,
                 Text = "M"
             };
-            System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
+            GraphicsPath path = new GraphicsPath();
             path.AddEllipse(0, 0, lblAvatar.Width, lblAvatar.Height);
             lblAvatar.Region = new Region(path);
-            this.Controls.Add(lblAvatar);
+            menuContentArea.Controls.Add(lblAvatar);
 
-            // Інформація про користувача зверху
+            // Статус користувача
             lblUserStatus = new Label()
             {
-                Location = new Point(290, 32),
+                Location = new Point(110, 43),
                 AutoSize = true,
-                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
                 ForeColor = Color.FromArgb(46, 204, 113),
-                Text = "🔓 Logged in as: Loading..."
+                Text = "Locked: Waiting for authorization..."
             };
-            this.Controls.Add(lblUserStatus);
+            menuContentArea.Controls.Add(lblUserStatus);
 
-            // Заголовок системи
+            // Заголовок
             lblTitle = new Label()
             {
                 Text = "SKI HOTEL",
-                Font = new Font("Segoe UI", 22, FontStyle.Bold),
+                Font = new Font("Segoe UI", 28, FontStyle.Bold),
                 ForeColor = Color.FromArgb(20, 45, 75),
                 AutoSize = true,
-                Location = new Point(228, 85)
+                Location = new Point(38, 105)
             };
-            this.Controls.Add(lblTitle);
+            menuContentArea.Controls.Add(lblTitle);
 
             // Підзаголовок
             lblSubtitle = new Label()
             {
                 Text = "Ski resort management terminal system",
-                Font = new Font("Segoe UI", 10, FontStyle.Regular),
+                Font = new Font("Segoe UI", 11, FontStyle.Regular),
                 ForeColor = Color.FromArgb(100, 115, 130),
                 AutoSize = true,
-                Location = new Point(232, 125)
+                Location = new Point(42, 155)
             };
-            this.Controls.Add(lblSubtitle);
+            menuContentArea.Controls.Add(lblSubtitle);
 
-            // ==========================================
-            // КНОПКИ В СТОВПЧИК (СПРАВА)
-            // ==========================================
-            int startX = 230;
-            int startY = 175;
-            int btnWidth = 580;
-            int btnHeight = 55;
-            int spacing = 15;
+            // Кнопки в стовпчик
+            int startX = 40;
+            int startY = 210;
+            int btnHeight = 65;
+            int spacing = 18;
 
             btnNewOrder = CreateMenuButton("NEW ORDER", new Point(startX, startY));
             btnClients = CreateMenuButton("CLIENTS", new Point(startX, startY + (btnHeight + spacing) * 1));
             btnEquipment = CreateMenuButton("EQUIPMENT", new Point(startX, startY + (btnHeight + spacing) * 2));
             btnStatistics = CreateMenuButton("STATISTICS", new Point(startX, startY + (btnHeight + spacing) * 3));
-            btnExit = CreateMenuButton("EXIT SYSTEM", new Point(startX, startY + (btnHeight + spacing) * 4));
 
-            this.Controls.Add(btnNewOrder);
-            this.Controls.Add(btnClients);
-            this.Controls.Add(btnEquipment);
-            this.Controls.Add(btnStatistics);
-            this.Controls.Add(btnExit);
+            menuContentArea.Controls.Add(btnNewOrder);
+            menuContentArea.Controls.Add(btnClients);
+            menuContentArea.Controls.Add(btnEquipment);
+            menuContentArea.Controls.Add(btnStatistics);
 
-            btnNewOrder.Click += BtnNewOrder_Click;
-            btnClients.Click += BtnClients_Click;
-            btnEquipment.Click += BtnEquipment_Click;
-            btnStatistics.Click += BtnStatistics_Click;
-            btnExit.Click += BtnExit_Click;
+            // Події відкриття форм НА МІСЦІ головного меню
+            btnNewOrder.Click += (s, e) => OpenFormInWorkspace(new OrderForm());
+            btnClients.Click += (s, e) => OpenFormInWorkspace(new ClientsForm());
+            btnEquipment.Click += (s, e) => OpenFormInWorkspace(new EquipmentForm());
+            btnStatistics.Click += (s, e) => OpenFormInWorkspace(new ReviewsForm());
 
-            // ==========================================
-            // ДРІБНИЙ ТЕКСТ В НИЗУ (БЕЗПЕКА ТА ШИФРУВАННЯ)
-            // ==========================================
+            // Текст безпеки в самому низу
             lblSecurityFooter = new Label()
             {
                 Text = "Secured with SHA-256 database encryption & LocalDB protocol — Terminal v2.4",
-                Font = new Font("Segoe UI", 8, FontStyle.Regular),
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Regular),
                 ForeColor = Color.FromArgb(140, 155, 170),
                 AutoSize = true,
-                Location = new Point(230, 545)
+                Dock = DockStyle.Bottom
             };
-            this.Controls.Add(lblSecurityFooter);
+            menuContentArea.Controls.Add(lblSecurityFooter);
 
             SetButtonsAccess(false);
         }
 
+        // Метод для відкриття будь-якої форми прямо замість головного меню
+        private void OpenFormInWorkspace(Form childForm)
+        {
+            if (activeChildForm != null)
+            {
+                activeChildForm.Close();
+            }
+
+            activeChildForm = childForm;
+
+            // Ховаємо головне меню
+            mainMenuContainer.Visible = false;
+
+            // Показуємо кнопку "Повернутись на головне меню" зверху
+            btnBackToMenu.Visible = true;
+
+            // Налаштовуємо дочірню форму, щоб вона вбудувалася без рамки на всю робочу область
+            childForm.TopLevel = false;
+            childForm.FormBorderStyle = FormBorderStyle.None;
+            childForm.Dock = DockStyle.Fill;
+
+            // Якщо форма закриється зсередини (наприклад, через this.Close()), повертаємо головне меню
+            childForm.FormClosed += (s, args) => ReturnToMainMenu();
+
+            workspacePanel.Controls.Add(childForm);
+            childForm.BringToFront();
+            childForm.Show();
+        }
+
+        // Метод повернення до головного меню
+        private void ReturnToMainMenu()
+        {
+            if (activeChildForm != null)
+            {
+                Form temp = activeChildForm;
+                activeChildForm = null; // Захист від повторного виклику при FormClosed
+                temp.Close();
+                temp.Dispose();
+            }
+
+            btnBackToMenu.Visible = false;
+            mainMenuContainer.Visible = true;
+            mainMenuContainer.BringToFront();
+        }
+
+        private Button CreateNavButton(string text, Color bgColor, Point location, int width)
+        {
+            Button btn = new Button()
+            {
+                Text = text,
+                Location = location,
+                Size = new Size(width, 36),
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                BackColor = bgColor,
+                ForeColor = Color.FromArgb(230, 238, 245),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            btn.FlatAppearance.BorderSize = 1;
+            btn.FlatAppearance.BorderColor = Color.FromArgb(42, 72, 108);
+            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(32, 62, 98);
+            return btn;
+        }
+
         private Button CreateMenuButton(string text, Point location)
         {
-            Button button = new Button();
-            button.Text = text;
-            button.Size = new Size(580, 55);
-            button.Location = location;
-            button.Font = new Font("Segoe UI", 11, FontStyle.Bold);
-            button.BackColor = Color.White;
-            button.ForeColor = Color.FromArgb(20, 45, 75);
-            button.FlatStyle = FlatStyle.Flat;
+            Button button = new Button()
+            {
+                Text = text,
+                Size = new Size(650, 65),
+                Location = location,
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(20, 45, 75),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
             button.FlatAppearance.BorderSize = 1;
             button.FlatAppearance.BorderColor = Color.FromArgb(205, 215, 225);
-            button.Cursor = Cursors.Hand;
+            button.FlatAppearance.MouseOverBackColor = Color.FromArgb(235, 242, 250);
             return button;
         }
 
@@ -175,7 +359,6 @@ namespace SkiHotel
             ShowLoginDialog();
         }
 
-        // Вікно авторизації, яке ми робили раніше
         private void ShowLoginDialog()
         {
             Form loginForm = new Form()
@@ -207,7 +390,7 @@ namespace SkiHotel
                 TextAlign = ContentAlignment.MiddleCenter,
                 Text = "M"
             };
-            System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
+            GraphicsPath path = new GraphicsPath();
             path.AddEllipse(0, 0, lblDialogAvatar.Width, lblDialogAvatar.Height);
             lblDialogAvatar.Region = new Region(path);
 
@@ -292,10 +475,11 @@ namespace SkiHotel
                 BackColor = Color.FromArgb(30, 135, 225),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                DialogResult = DialogResult.OK
             };
-            btnLogin.FlatStyle = FlatStyle.Flat;
             btnLogin.FlatAppearance.BorderSize = 0;
-            btnLogin.Cursor = Cursors.Hand;
             btnLogin.Click += (sender, args) => { loginForm.Close(); };
 
             loginForm.Controls.Add(lblHeader);
@@ -307,7 +491,14 @@ namespace SkiHotel
             loginForm.Controls.Add(btnLogin);
             loginForm.AcceptButton = btnLogin;
 
-            loginForm.ShowDialog(this);
+            DialogResult result = loginForm.ShowDialog(this);
+
+            // Якщо користувач закрив вікно авторизації на хрестик
+            if (result != DialogResult.OK && string.IsNullOrEmpty(currentUsername))
+            {
+                Application.Exit();
+                return;
+            }
 
             string inputUser = cmbUser.SelectedItem != null ? cmbUser.SelectedItem.ToString() : "";
             string inputPassHash = SecurityHelper.HashPassword(txtPass.Text);
@@ -335,52 +526,21 @@ namespace SkiHotel
             if (success)
             {
                 SetButtonsAccess(true);
-                // Оновлюємо кружечок та статус у головному меню під обраного користувача
                 lblAvatar.Text = currentUsername.Substring(0, 1).ToUpper();
                 lblUserStatus.Text = $"Logged in as: {currentUsername} ({currentRole})";
             }
             else
             {
                 MessageBox.Show("Incorrect password! Access denied.", "Authorization Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Application.Exit();
+                if (string.IsNullOrEmpty(currentUsername))
+                {
+                    Application.Exit();
+                }
+                else
+                {
+                    ShowLoginDialog();
+                }
             }
-        }
-
-        private void BtnNewOrder_Click(object sender, EventArgs e)
-        {
-            using (OrderForm orderForm = new OrderForm())
-            {
-                orderForm.ShowDialog();
-            }
-        }
-
-        private void BtnClients_Click(object sender, EventArgs e)
-        {
-            using (ClientsForm form = new ClientsForm())
-            {
-                form.ShowDialog(this);
-            }
-        }
-
-        private void BtnEquipment_Click(object sender, EventArgs e)
-        {
-            using (EquipmentForm equipmentForm = new EquipmentForm())
-            {
-                equipmentForm.ShowDialog(this);
-            }
-        }
-
-        private void BtnStatistics_Click(object sender, EventArgs e)
-        {
-            using (ReviewsForm reviewsForm = new ReviewsForm())
-            {
-                reviewsForm.ShowDialog(this);
-            }
-        }
-
-        private void BtnExit_Click(object sender, EventArgs e)
-        {
-            Application.Exit();
         }
     }
 }

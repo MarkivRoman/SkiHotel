@@ -1,190 +1,130 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+using System.Data.SqlClient;
 using SkiHotel.Models;
 
 namespace SkiHotel.Services
 {
     public static class OrderService
     {
-        private static readonly string DataFolder =
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
-
-        private static readonly string FilePath =
-            Path.Combine(DataFolder, "orders.txt");
-
-        private const string Separator = "========================================";
-
         public static List<Order> GetAllOrders()
         {
             List<Order> orders = new List<Order>();
 
-            if (!File.Exists(FilePath))
+            using (var conn = Database.GetConnection())
             {
-                return orders;
+                conn.Open();
+                string query = "SELECT * FROM Orders ORDER BY Id ASC";
+                using (var cmd = new SqlCommand(query, conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        Order order = new Order
+                        {
+                            Id = Convert.ToInt32(reader["Id"]),
+                            CreatedAt = Convert.ToDateTime(reader["CreatedAt"]),
+                            ClientName = reader["ClientName"].ToString(),
+                            Phone = reader["Phone"].ToString(),
+                            Email = reader["Email"].ToString(),
+                            HasEquipment = reader["HasEquipment"].ToString(),
+                            Weight = reader["Weight"].ToString(),
+                            Height = reader["Height"].ToString(),
+                            ShoeSize = reader["ShoeSize"].ToString(),
+                            SkillLevel = reader["SkillLevel"].ToString(),
+                            Skis = reader["Skis"].ToString(),
+                            Boots = reader["Boots"].ToString(),
+                            Poles = reader["Poles"].ToString(),
+                            SkiPassDays = Convert.ToInt32(reader["SkiPassDays"]),
+                            HotelRoom = reader["HotelRoom"].ToString(),
+                            Breakfast = Convert.ToBoolean(reader["Breakfast"]),
+                            Sauna = Convert.ToBoolean(reader["Sauna"]),
+                            TotalPrice = Convert.ToDecimal(reader["TotalPrice"]),
+                            Status = reader["Status"].ToString()
+                        };
+                        orders.Add(order);
+                    }
+                }
             }
 
-            string content = File.ReadAllText(FilePath);
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                return orders;
-            }
-
-            string[] blocks = content.Split(
-                new string[] { Separator },
-                StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (string block in blocks)
-            {
-                if (!block.Contains("Client:") && !block.Contains("Клієнт:"))
-                {
-                    continue;
-                }
-
-                Order order = new Order();
-                order.Id = ReadInt(block, "ID:", "ID:", 0);
-
-                string dateText = ReadValue(block, "Date:", "Дата:");
-                if (DateTime.TryParse(dateText, out DateTime createdAt))
-                {
-                    order.CreatedAt = createdAt;
-                }
-
-                order.ClientName = ReadValue(block, "Client:", "Клієнт:");
-                order.Phone = ReadValue(block, "Phone:", "Телефон:");
-                order.Email = ReadValue(block, "Email:", "Email:");
-                order.HasEquipment = ReadValue(block, "Own equipment:", "Власне спорядження:");
-                order.Weight = ReadValue(block, "Weight:", "Вага:");
-                order.Height = ReadValue(block, "Height:", "Зріст:");
-                order.ShoeSize = ReadValue(block, "Shoe size:", "Розмір взуття:");
-
-                string level = ReadValue(block, "Skill level:", "Рівень:");
-                order.SkillLevel = level;
-                order.Level = level;
-
-                order.Skis = ReadValue(block, "Skis:", "Лижі:");
-                order.Boots = ReadValue(block, "Boots:", "Черевики:");
-                order.Poles = ReadValue(block, "Poles:", "Палиці:");
-
-                int days = ReadInt(block, "Ski pass days:", "Днів абонемента:", 1);
-                order.SkiPassDays = days;
-                order.Days = days;
-
-                order.HotelRoom = ReadValue(block, "Hotel room:", "Номер у готелі:");
-
-                string breakfastStr = ReadValue(block, "Breakfast:", "Сніданок:");
-                order.Breakfast = (breakfastStr == "Yes" || breakfastStr == "Так" || breakfastStr == "True");
-
-                string saunaStr = ReadValue(block, "Sauna:", "Сауна:");
-                order.Sauna = (saunaStr == "Yes" || saunaStr == "Так" || saunaStr == "True");
-
-                string costStr = ReadValue(block, "Cost:", "Вартість:");
-                order.Cost = costStr;
-                if (decimal.TryParse(costStr.Replace(" UAH", "").Replace(" грн", "").Trim(), out decimal price))
-                {
-                    order.TotalPrice = price;
-                }
-
-                string status = ReadValue(block, "Status:", "Статус:");
-                order.Status = string.IsNullOrWhiteSpace(status) ? "Booked" : status;
-
-                orders.Add(order);
-            }
-
-            return orders.OrderBy(x => x.Id).ToList();
+            return orders;
         }
 
         public static void SaveOrder(Order order)
         {
-            var orders = GetAllOrders();
-            order.Id = orders.Count > 0 ? orders.Max(o => o.Id) + 1 : 1;
             order.CreatedAt = DateTime.Now;
-            orders.Add(order);
-            SaveAllOrders(orders);
+            if (string.IsNullOrWhiteSpace(order.Status))
+            {
+                order.Status = "Booked";
+            }
+
+            using (var conn = Database.GetConnection())
+            {
+                conn.Open();
+                string query = @"
+                    INSERT INTO Orders 
+                    (CreatedAt, ClientName, Phone, Email, HasEquipment, Weight, Height, ShoeSize, SkillLevel, Skis, Boots, Poles, SkiPassDays, HotelRoom, Breakfast, Sauna, TotalPrice, Status) 
+                    VALUES 
+                    (@CreatedAt, @ClientName, @Phone, @Email, @HasEquipment, @Weight, @Height, @ShoeSize, @SkillLevel, @Skis, @Boots, @Poles, @SkiPassDays, @HotelRoom, @Breakfast, @Sauna, @TotalPrice, @Status);
+                    SELECT SCOPE_IDENTITY();";
+
+                using (var cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@CreatedAt", order.CreatedAt);
+                    cmd.Parameters.AddWithValue("@ClientName", order.ClientName ?? "");
+                    cmd.Parameters.AddWithValue("@Phone", order.Phone ?? "");
+                    cmd.Parameters.AddWithValue("@Email", order.Email ?? "");
+                    cmd.Parameters.AddWithValue("@HasEquipment", order.HasEquipment ?? "No");
+                    cmd.Parameters.AddWithValue("@Weight", order.Weight ?? "");
+                    cmd.Parameters.AddWithValue("@Height", order.Height ?? "");
+                    cmd.Parameters.AddWithValue("@ShoeSize", order.ShoeSize ?? "");
+                    cmd.Parameters.AddWithValue("@SkillLevel", order.SkillLevel ?? "");
+                    cmd.Parameters.AddWithValue("@Skis", order.Skis ?? "");
+                    cmd.Parameters.AddWithValue("@Boots", order.Boots ?? "");
+                    cmd.Parameters.AddWithValue("@Poles", order.Poles ?? "");
+                    cmd.Parameters.AddWithValue("@SkiPassDays", order.SkiPassDays);
+                    cmd.Parameters.AddWithValue("@HotelRoom", order.HotelRoom ?? "No");
+                    cmd.Parameters.AddWithValue("@Breakfast", order.Breakfast);
+                    cmd.Parameters.AddWithValue("@Sauna", order.Sauna);
+                    cmd.Parameters.AddWithValue("@TotalPrice", order.TotalPrice);
+                    cmd.Parameters.AddWithValue("@Status", order.Status);
+
+                    object newId = cmd.ExecuteScalar();
+                    if (newId != null)
+                    {
+                        order.Id = Convert.ToInt32(newId);
+                    }
+                }
+            }
         }
 
         public static void UpdateOrderStatus(int orderId, string newStatus)
         {
-            var orders = GetAllOrders();
-            var target = orders.FirstOrDefault(o => o.Id == orderId);
-            if (target != null)
+            using (var conn = Database.GetConnection())
             {
-                target.Status = newStatus;
-                SaveAllOrders(orders);
+                conn.Open();
+                string query = "UPDATE Orders SET Status = @Status WHERE Id = @Id";
+                using (var cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@Status", newStatus);
+                    cmd.Parameters.AddWithValue("@Id", orderId);
+                    cmd.ExecuteNonQuery();
+                }
             }
         }
 
         public static void DeleteOrder(int orderId)
         {
-            var orders = GetAllOrders();
-            var target = orders.FirstOrDefault(o => o.Id == orderId);
-            if (target != null)
+            using (var conn = Database.GetConnection())
             {
-                orders.Remove(target);
-                SaveAllOrders(orders);
-            }
-        }
-
-        private static void SaveAllOrders(List<Order> orders)
-        {
-            Directory.CreateDirectory(DataFolder);
-
-            using (StreamWriter writer = new StreamWriter(FilePath, false))
-            {
-                foreach (var order in orders)
+                conn.Open();
+                string query = "DELETE FROM Orders WHERE Id = @Id";
+                using (var cmd = new SqlCommand(query, conn))
                 {
-                    writer.WriteLine(Separator);
-                    writer.WriteLine("ORDER");
-                    writer.WriteLine("ID: " + order.Id);
-                    writer.WriteLine("Date: " + order.CreatedAt.ToString("dd.MM.yyyy HH:mm:ss"));
-                    writer.WriteLine("Client: " + order.ClientName);
-                    writer.WriteLine("Phone: " + order.Phone);
-                    writer.WriteLine("Email: " + order.Email);
-                    writer.WriteLine("Own equipment: " + order.HasEquipment);
-                    writer.WriteLine("Weight: " + order.Weight);
-                    writer.WriteLine("Height: " + order.Height);
-                    writer.WriteLine("Shoe size: " + order.ShoeSize);
-                    writer.WriteLine("Skill level: " + order.SkillLevel);
-                    writer.WriteLine("Skis: " + order.Skis);
-                    writer.WriteLine("Boots: " + order.Boots);
-                    writer.WriteLine("Poles: " + order.Poles);
-                    writer.WriteLine("Ski pass days: " + order.SkiPassDays);
-                    writer.WriteLine("Hotel room: " + order.HotelRoom);
-                    writer.WriteLine("Breakfast: " + (order.Breakfast ? "Yes" : "No"));
-                    writer.WriteLine("Sauna: " + (order.Sauna ? "Yes" : "No"));
-                    writer.WriteLine("Cost: " + order.Cost);
-                    writer.WriteLine("Status: " + order.Status);
-                    writer.WriteLine();
+                    cmd.Parameters.AddWithValue("@Id", orderId);
+                    cmd.ExecuteNonQuery();
                 }
             }
-        }
-
-        private static string ReadValue(string block, params string[] labels)
-        {
-            string[] lines = block.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-            foreach (string line in lines)
-            {
-                string trimmedLine = line.Trim();
-                foreach (string label in labels)
-                {
-                    if (trimmedLine.StartsWith(label, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return trimmedLine.Substring(label.Length).Trim();
-                    }
-                }
-            }
-            return "";
-        }
-
-        private static int ReadInt(string block, string labelEn, string labelUa, int defaultValue)
-        {
-            string value = ReadValue(block, labelEn, labelUa);
-            if (int.TryParse(value, out int result))
-            {
-                return result;
-            }
-            return defaultValue;
         }
     }
 }

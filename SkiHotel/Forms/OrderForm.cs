@@ -179,7 +179,7 @@ namespace SkiHotel.Forms
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Font = new Font("Segoe UI", 10)
             };
-            cmbSkill.Items.AddRange(new string[] { "Beginner", "Intermediate", "Professional", "Початківець", "Середній", "Професіонал" });
+            cmbSkill.Items.AddRange(new string[] { "Beginner", "Intermediate", "Professional" });
             cmbSkill.SelectedIndex = 0;
             grpEquipment.Controls.Add(cmbSkill);
 
