@@ -9,7 +9,6 @@ namespace SkiHotel
 {
     public partial class MainForm : Form
     {
-        // Верхня панель навігації (завжди зверху для всіх форм)
         private Panel topNavBar;
         private Button btnBackToMenu;
         private Button btnLanguage;
@@ -18,14 +17,10 @@ namespace SkiHotel
         private Button btnSwitchUser;
         private Button btnTopExit;
 
-        // Робоча область під верхньою панеллю
         private Panel workspacePanel;
-
-        // Панель самого Головного Меню
         private Panel mainMenuContainer;
         private Form activeChildForm = null;
 
-        // Елементи Головного Меню
         private Button btnNewOrder;
         private Button btnClients;
         private Button btnEquipment;
@@ -45,29 +40,25 @@ namespace SkiHotel
             InitializeComponent();
             Database.InitializeDatabase();
             SetupShellAndMenu();
+            LocalizationManager.LanguageChanged += ApplyLanguage;
         }
 
         private void SetupShellAndMenu()
         {
-            // Налаштування головного вікна: по центру, на весь екран
             this.Text = "SKI HOTEL — Enterprise Terminal";
             this.StartPosition = FormStartPosition.CenterScreen;
             this.WindowState = FormWindowState.Maximized;
             this.MinimumSize = new Size(1024, 700);
             this.BackColor = Color.FromArgb(242, 246, 250);
 
-            // ========================================================
-            // 1. ВЕРХНЯ ПАНЕЛЬ НАВІГАЦІЇ (Завжди зверху для всіх форм)
-            // ========================================================
             topNavBar = new Panel()
             {
                 Dock = DockStyle.Top,
                 Height = 58,
-                BackColor = Color.FromArgb(12, 28, 48) // Глибокий темний фон панелі
+                BackColor = Color.FromArgb(12, 28, 48)
             };
             this.Controls.Add(topNavBar);
 
-            // Кнопка "Повернутись на головне меню" (зліва)
             btnBackToMenu = new Button()
             {
                 Text = "←  Back to Main Menu",
@@ -78,14 +69,13 @@ namespace SkiHotel
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
-                Visible = false // На головному меню прихована, з'являється у дочірніх формах
+                Visible = false
             };
             btnBackToMenu.FlatAppearance.BorderSize = 0;
             btnBackToMenu.FlatAppearance.MouseOverBackColor = Color.FromArgb(35, 130, 210);
             btnBackToMenu.Click += (s, e) => ReturnToMainMenu();
             topNavBar.Controls.Add(btnBackToMenu);
 
-            // Контейнер для правих кнопок із фіксованою шириною та чіткими відступами
             Panel rightButtonsPanel = new Panel()
             {
                 Size = new Size(560, 58),
@@ -95,10 +85,12 @@ namespace SkiHotel
             };
             topNavBar.Controls.Add(rightButtonsPanel);
 
-            // 1. Кнопка зміни мови (з випадаючим меню-заглушкою)
             langMenu = new ContextMenuStrip();
-            langMenu.Items.Add("🇺🇦 Українська мова");
-            langMenu.Items.Add("🇬🇧 English language");
+            var ukItem = langMenu.Items.Add("🇺🇦 Українська мова");
+            var enItem = langMenu.Items.Add("🇬🇧 English language");
+
+            ukItem.Click += (s, e) => { LocalizationManager.AppLanguage = "uk"; };
+            enItem.Click += (s, e) => { LocalizationManager.AppLanguage = "en"; };
 
             btnLanguage = CreateNavButton("🌐 Language ▾", Color.FromArgb(20, 42, 68), new Point(10, 11), 135);
             btnLanguage.Click += (s, e) =>
@@ -107,7 +99,6 @@ namespace SkiHotel
             };
             rightButtonsPanel.Controls.Add(btnLanguage);
 
-            // 2. Кнопка Оновити (візуальне оновлення)
             btnRefresh = CreateNavButton("🔄 Refresh", Color.FromArgb(20, 42, 68), new Point(157, 11), 115);
             btnRefresh.Click += (s, e) =>
             {
@@ -115,14 +106,13 @@ namespace SkiHotel
                 if (activeChildForm != null) activeChildForm.Refresh();
 
                 string oldText = btnRefresh.Text;
-                btnRefresh.Text = "✓ Updated";
+                btnRefresh.Text = LocalizationManager.AppLanguage == "uk" ? "✓ Оновлено" : "✓ Updated";
                 Timer t = new Timer() { Interval = 800 };
                 t.Tick += (ts, te) => { btnRefresh.Text = oldText; t.Stop(); t.Dispose(); };
                 t.Start();
             };
             rightButtonsPanel.Controls.Add(btnRefresh);
 
-            // 3. Кнопка Змінити користувача (з фігуркою людини)
             btnSwitchUser = CreateNavButton("👤 Switch User", Color.FromArgb(20, 42, 68), new Point(284, 11), 150);
             btnSwitchUser.Click += (s, e) =>
             {
@@ -132,16 +122,12 @@ namespace SkiHotel
             };
             rightButtonsPanel.Controls.Add(btnSwitchUser);
 
-            // 4. Червона кнопка Виходу (темно-бордова, підсвічується червоним)
             btnTopExit = CreateNavButton("✕ Exit", Color.FromArgb(165, 32, 32), new Point(446, 11), 95);
             btnTopExit.FlatAppearance.BorderColor = Color.FromArgb(200, 50, 50);
             btnTopExit.FlatAppearance.MouseOverBackColor = Color.FromArgb(205, 40, 40);
             btnTopExit.Click += (s, e) => Application.Exit();
             rightButtonsPanel.Controls.Add(btnTopExit);
 
-            // ========================================================
-            // 2. РОБОЧА ОБЛАСТЬ ПІД ВЕРХНЬОЮ ПАНЕЛЛЮ
-            // ========================================================
             workspacePanel = new Panel()
             {
                 Dock = DockStyle.Fill,
@@ -150,9 +136,6 @@ namespace SkiHotel
             this.Controls.Add(workspacePanel);
             workspacePanel.BringToFront();
 
-            // ========================================================
-            // 3. КОНТЕЙНЕР ГОЛОВНОГО МЕНЮ (Вставляється у workspacePanel)
-            // ========================================================
             mainMenuContainer = new Panel()
             {
                 Dock = DockStyle.Fill,
@@ -160,7 +143,6 @@ namespace SkiHotel
             };
             workspacePanel.Controls.Add(mainMenuContainer);
 
-            // Ліва темно-синя смуга
             Panel leftBlueStripe = new Panel()
             {
                 Dock = DockStyle.Left,
@@ -169,7 +151,6 @@ namespace SkiHotel
             };
             mainMenuContainer.Controls.Add(leftBlueStripe);
 
-            // Права частина головного меню
             Panel menuContentArea = new Panel()
             {
                 Dock = DockStyle.Fill,
@@ -178,7 +159,6 @@ namespace SkiHotel
             mainMenuContainer.Controls.Add(menuContentArea);
             menuContentArea.BringToFront();
 
-            // Аватарка з першою літерою
             lblAvatar = new Label()
             {
                 Size = new Size(55, 55),
@@ -194,7 +174,6 @@ namespace SkiHotel
             lblAvatar.Region = new Region(path);
             menuContentArea.Controls.Add(lblAvatar);
 
-            // Статус користувача
             lblUserStatus = new Label()
             {
                 Location = new Point(110, 43),
@@ -205,7 +184,6 @@ namespace SkiHotel
             };
             menuContentArea.Controls.Add(lblUserStatus);
 
-            // Заголовок
             lblTitle = new Label()
             {
                 Text = "SKI HOTEL",
@@ -216,7 +194,6 @@ namespace SkiHotel
             };
             menuContentArea.Controls.Add(lblTitle);
 
-            // Підзаголовок
             lblSubtitle = new Label()
             {
                 Text = "Ski resort management terminal system",
@@ -227,7 +204,6 @@ namespace SkiHotel
             };
             menuContentArea.Controls.Add(lblSubtitle);
 
-            // Кнопки в стовпчик
             int startX = 40;
             int startY = 210;
             int btnHeight = 65;
@@ -243,13 +219,11 @@ namespace SkiHotel
             menuContentArea.Controls.Add(btnEquipment);
             menuContentArea.Controls.Add(btnStatistics);
 
-            // Події відкриття форм НА МІСЦІ головного меню
             btnNewOrder.Click += (s, e) => OpenFormInWorkspace(new OrderForm());
             btnClients.Click += (s, e) => OpenFormInWorkspace(new ClientsForm());
             btnEquipment.Click += (s, e) => OpenFormInWorkspace(new EquipmentForm());
             btnStatistics.Click += (s, e) => OpenFormInWorkspace(new ReviewsForm());
 
-            // Текст безпеки в самому низу
             lblSecurityFooter = new Label()
             {
                 Text = "Secured with SHA-256 database encryption & LocalDB protocol — Terminal v2.4",
@@ -261,9 +235,46 @@ namespace SkiHotel
             menuContentArea.Controls.Add(lblSecurityFooter);
 
             SetButtonsAccess(false);
+            ApplyLanguage();
         }
 
-        // Метод для відкриття будь-якої форми прямо замість головного меню
+        private void ApplyLanguage()
+        {
+            bool isUk = LocalizationManager.AppLanguage == "uk";
+
+            btnBackToMenu.Text = isUk ? "←  На головне меню" : "←  Back to Main Menu";
+            btnLanguage.Text = isUk ? "🌐 Мова ▾" : "🌐 Language ▾";
+            btnRefresh.Text = isUk ? "🔄 Оновити" : "🔄 Refresh";
+            btnSwitchUser.Text = isUk ? "👤 Змінити" : "👤 Switch User";
+            btnTopExit.Text = isUk ? "✕ Вихід" : "✕ Exit";
+
+            lblSubtitle.Text = isUk
+                ? "Система управління гірськолижним комплексом"
+                : "Ski resort management terminal system";
+
+            btnNewOrder.Text = isUk ? "НОВЕ ЗАМОВЛЕННЯ" : "NEW ORDER";
+            btnClients.Text = isUk ? "КЛІЄНТИ" : "CLIENTS";
+            btnEquipment.Text = isUk ? "СПОРЯДЖЕННЯ" : "EQUIPMENT";
+            btnStatistics.Text = isUk ? "СТАТИСТИКА ТА ВІДГУКИ" : "STATISTICS";
+
+            lblSecurityFooter.Text = isUk
+                ? "Захищено шифруванням бази даних SHA-256 та протоколом LocalDB — Термінал v2.4"
+                : "Secured with SHA-256 database encryption & LocalDB protocol — Terminal v2.4";
+
+            if (string.IsNullOrEmpty(currentUsername))
+            {
+                lblUserStatus.Text = isUk
+                    ? "Заблоковано: Очікування авторизації..."
+                    : "Locked: Waiting for authorization...";
+            }
+            else
+            {
+                lblUserStatus.Text = isUk
+                    ? $"Ви увійшли як: {currentUsername} ({currentRole})"
+                    : $"Logged in as: {currentUsername} ({currentRole})";
+            }
+        }
+
         private void OpenFormInWorkspace(Form childForm)
         {
             if (activeChildForm != null)
@@ -272,19 +283,13 @@ namespace SkiHotel
             }
 
             activeChildForm = childForm;
-
-            // Ховаємо головне меню
             mainMenuContainer.Visible = false;
-
-            // Показуємо кнопку "Повернутись на головне меню" зверху
             btnBackToMenu.Visible = true;
 
-            // Налаштовуємо дочірню форму, щоб вона вбудувалася без рамки на всю робочу область
             childForm.TopLevel = false;
             childForm.FormBorderStyle = FormBorderStyle.None;
             childForm.Dock = DockStyle.Fill;
 
-            // Якщо форма закриється зсередини (наприклад, через this.Close()), повертаємо головне меню
             childForm.FormClosed += (s, args) => ReturnToMainMenu();
 
             workspacePanel.Controls.Add(childForm);
@@ -292,13 +297,12 @@ namespace SkiHotel
             childForm.Show();
         }
 
-        // Метод повернення до головного меню
         private void ReturnToMainMenu()
         {
             if (activeChildForm != null)
             {
                 Form temp = activeChildForm;
-                activeChildForm = null; // Захист від повторного виклику при FormClosed
+                activeChildForm = null;
                 temp.Close();
                 temp.Dispose();
             }
@@ -361,12 +365,14 @@ namespace SkiHotel
 
         private void ShowLoginDialog()
         {
+            bool isUk = LocalizationManager.AppLanguage == "uk";
+
             Form loginForm = new Form()
             {
                 Width = 520,
                 Height = 320,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
-                Text = "Ski Hotel — Authorization",
+                Text = isUk ? "Ski Hotel — Авторизація" : "Ski Hotel — Authorization",
                 StartPosition = FormStartPosition.CenterScreen,
                 MaximizeBox = false,
                 MinimizeBox = false,
@@ -401,7 +407,7 @@ namespace SkiHotel
             {
                 Left = 175,
                 Top = 20,
-                Text = "Ski Hotel Terminal Authorization",
+                Text = isUk ? "Авторизація терміналу Ski Hotel" : "Ski Hotel Terminal Authorization",
                 Font = new Font("Segoe UI", 12, FontStyle.Bold),
                 ForeColor = Color.FromArgb(20, 45, 75),
                 AutoSize = true
@@ -411,7 +417,7 @@ namespace SkiHotel
             {
                 Left = 175,
                 Top = 45,
-                Text = "Please select account and enter security key",
+                Text = isUk ? "Оберіть профіль та введіть ключ доступу" : "Please select account and enter security key",
                 Font = new Font("Segoe UI", 8.5f, FontStyle.Regular),
                 ForeColor = Color.FromArgb(110, 125, 140),
                 AutoSize = true
@@ -421,7 +427,7 @@ namespace SkiHotel
             {
                 Left = 175,
                 Top = 85,
-                Text = "Select User Profile:",
+                Text = isUk ? "Профіль користувача:" : "Select User Profile:",
                 Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(50, 70, 90),
                 AutoSize = true
@@ -450,7 +456,7 @@ namespace SkiHotel
             {
                 Left = 175,
                 Top = 150,
-                Text = "Password:",
+                Text = isUk ? "Пароль:" : "Password:",
                 Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(50, 70, 90),
                 AutoSize = true
@@ -467,7 +473,7 @@ namespace SkiHotel
 
             Button btnLogin = new Button()
             {
-                Text = "AUTHORIZE",
+                Text = isUk ? "УВІЙТИ" : "AUTHORIZE",
                 Left = 175,
                 Top = 220,
                 Width = 290,
@@ -493,7 +499,6 @@ namespace SkiHotel
 
             DialogResult result = loginForm.ShowDialog(this);
 
-            // Якщо користувач закрив вікно авторизації на хрестик
             if (result != DialogResult.OK && string.IsNullOrEmpty(currentUsername))
             {
                 Application.Exit();
@@ -527,11 +532,16 @@ namespace SkiHotel
             {
                 SetButtonsAccess(true);
                 lblAvatar.Text = currentUsername.Substring(0, 1).ToUpper();
-                lblUserStatus.Text = $"Logged in as: {currentUsername} ({currentRole})";
+                ApplyLanguage();
             }
             else
             {
-                MessageBox.Show("Incorrect password! Access denied.", "Authorization Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    isUk ? "Невірний пароль! Доступ заборонено." : "Incorrect password! Access denied.",
+                    isUk ? "Помилка авторизації" : "Authorization Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
                 if (string.IsNullOrEmpty(currentUsername))
                 {
                     Application.Exit();

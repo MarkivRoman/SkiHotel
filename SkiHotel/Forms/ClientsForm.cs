@@ -13,13 +13,13 @@ namespace SkiHotel.Forms
     {
         private TabControl tabControl = new TabControl();
 
-        // Tabs
         private TabPage tabActive = new TabPage("Active Bookings");
         private TabPage tabIncoming = new TabPage("Incoming Requests (Waiting for Payment)");
 
         private FlowLayoutPanel panelActiveContainer = new FlowLayoutPanel();
         private FlowLayoutPanel panelIncomingContainer = new FlowLayoutPanel();
 
+        private Label title = new Label();
         private Label lblCapacity = new Label();
         private const int MaxCapacity = 20;
 
@@ -32,7 +32,6 @@ namespace SkiHotel.Forms
             BackColor = Color.FromArgb(240, 245, 250);
             Font = new Font("Segoe UI", 10);
 
-            // Top panel with title and capacity counter
             Panel topPanel = new Panel
             {
                 Dock = DockStyle.Top,
@@ -41,7 +40,7 @@ namespace SkiHotel.Forms
                 Padding = new Padding(25, 0, 25, 0)
             };
 
-            Label title = new Label
+            title = new Label
             {
                 Text = "Client and Booking Management Panel",
                 Font = new Font("Segoe UI", 16, FontStyle.Bold),
@@ -58,11 +57,9 @@ namespace SkiHotel.Forms
             topPanel.Controls.Add(title);
             topPanel.Controls.Add(lblCapacity);
 
-            // Setup TabControl (tabs)
             tabControl.Dock = DockStyle.Fill;
             tabControl.Font = new Font("Segoe UI", 11, FontStyle.Bold);
 
-            // Setup containers inside tabs
             SetupContainer(panelActiveContainer);
             SetupContainer(panelIncomingContainer);
 
@@ -74,6 +71,21 @@ namespace SkiHotel.Forms
 
             Controls.Add(tabControl);
             Controls.Add(topPanel);
+
+            LocalizationManager.LanguageChanged += ApplyLanguage;
+            this.FormClosed += (s, e) => LocalizationManager.LanguageChanged -= ApplyLanguage;
+
+            ApplyLanguage();
+        }
+
+        private void ApplyLanguage()
+        {
+            bool isUk = LocalizationManager.AppLanguage == "uk";
+
+            Text = isUk ? "Управління бронюваннями — SKI HOTEL" : "Booking Management — SKI HOTEL";
+            title.Text = isUk ? "Панель управління клієнтами та бронюваннями" : "Client and Booking Management Panel";
+            tabActive.Text = isUk ? "Активні бронювання" : "Active Bookings";
+            tabIncoming.Text = isUk ? "Вхідні заявки (Очікують оплати)" : "Incoming Requests (Waiting for Payment)";
 
             LoadData();
         }
@@ -88,32 +100,32 @@ namespace SkiHotel.Forms
 
         private void LoadData()
         {
+            bool isUk = LocalizationManager.AppLanguage == "uk";
             var allOrders = OrderService.GetAllOrders();
 
-            // Filter by statuses
             var activeOrders = allOrders.Where(o => o.Status == "Booked" || o.Status == "Заброньовано" || string.IsNullOrEmpty(o.Status)).ToList();
             var incomingOrders = allOrders.Where(o => o.Status == "Incoming" || o.Status == "Waiting for Payment" || o.Status == "Вхідні" || o.Status == "Очікує оплати").ToList();
 
-            // Update free spots indicator (maximum 20)
             int activeCount = activeOrders.Count;
             int freeSpots = Math.Max(0, MaxCapacity - activeCount);
-            lblCapacity.Text = $"Free spots: {freeSpots} of {MaxCapacity} (Occupied: {activeCount})";
+            lblCapacity.Text = isUk
+                ? $"Вільних місць: {freeSpots} з {MaxCapacity} (Зайнято: {activeCount})"
+                : $"Free spots: {freeSpots} of {MaxCapacity} (Occupied: {activeCount})";
 
-            // Populate active
             FillContainer(panelActiveContainer, activeOrders, true);
-            // Populate incoming
             FillContainer(panelIncomingContainer, incomingOrders, false);
         }
 
         private void FillContainer(FlowLayoutPanel panel, List<Order> orders, bool isActiveTab)
         {
+            bool isUk = LocalizationManager.AppLanguage == "uk";
             panel.Controls.Clear();
 
             if (orders == null || orders.Count == 0)
             {
                 Label lblEmpty = new Label
                 {
-                    Text = "List is empty.",
+                    Text = isUk ? "Список порожній." : "List is empty.",
                     Font = new Font("Segoe UI", 13, FontStyle.Italic),
                     ForeColor = Color.Gray,
                     AutoSize = true,
@@ -129,8 +141,18 @@ namespace SkiHotel.Forms
             }
         }
 
+        private string TranslateYesNo(string value, bool isUk)
+        {
+            if (!isUk) return value;
+            if (value == "Yes") return "Так";
+            if (value == "No") return "Ні";
+            return value;
+        }
+
         private Panel CreateOrderCard(Order order, bool isActiveTab)
         {
+            bool isUk = LocalizationManager.AppLanguage == "uk";
+
             Panel card = new Panel
             {
                 Width = 900,
@@ -147,7 +169,6 @@ namespace SkiHotel.Forms
                 }
             };
 
-            // Round avatar with initial
             PictureBox avatarBox = new PictureBox
             {
                 Size = new Size(50, 50),
@@ -170,7 +191,6 @@ namespace SkiHotel.Forms
                 }
             };
 
-            // Client Name and contacts
             Label lblName = new Label
             {
                 Text = order.ClientName,
@@ -182,15 +202,21 @@ namespace SkiHotel.Forms
 
             Label lblContacts = new Label
             {
-                Text = $"Phone: {order.Phone}  |  Email: {order.Email}",
+                Text = isUk
+                    ? $"Телефон: {order.Phone}  |  Email: {order.Email}"
+                    : $"Phone: {order.Phone}  |  Email: {order.Email}",
                 Font = new Font("Segoe UI", 10, FontStyle.Regular),
                 ForeColor = Color.FromArgb(100, 110, 120),
                 Location = new Point(87, 45),
                 AutoSize = true
             };
 
-            // Booking details
-            string details = $"Pass: {order.Days} days | Equipment: {order.HasEquipment} | Hotel: {order.HotelRoom} | Cost: {order.Cost}";
+            string equipText = TranslateYesNo(order.HasEquipment, isUk);
+            string hotelText = TranslateYesNo(order.HotelRoom, isUk);
+            string details = isUk
+                ? $"Скі-пас: {order.Days} дн. | Власне спорядження: {equipText} | Готель: {hotelText} | Вартість: {order.TotalPrice} грн"
+                : $"Pass: {order.Days} days | Equipment: {order.HasEquipment} | Hotel: {order.HotelRoom} | Cost: {order.Cost}";
+
             Label lblDetails = new Label
             {
                 Text = details,
@@ -200,24 +226,24 @@ namespace SkiHotel.Forms
                 AutoSize = true
             };
 
-            // Request date
             Label lblDate = new Label
             {
-                Text = $"Requested at: {order.CreatedAt:dd.MM.yyyy HH:mm}",
+                Text = isUk
+                    ? $"Створено: {order.CreatedAt:dd.MM.yyyy HH:mm}"
+                    : $"Requested at: {order.CreatedAt:dd.MM.yyyy HH:mm}",
                 Font = new Font("Segoe UI", 9, FontStyle.Italic),
                 ForeColor = Color.Gray,
                 Location = new Point(650, 18),
                 AutoSize = true
             };
 
-            // Approve button (only for incoming)
             if (!isActiveTab)
             {
                 Button btnApprove = new Button
                 {
-                    Text = "Approve",
-                    Location = new Point(650, 105),
-                    Size = new Size(115, 32),
+                    Text = isUk ? "Підтвердити" : "Approve",
+                    Location = new Point(635, 105),
+                    Size = new Size(130, 32),
                     BackColor = Color.FromArgb(40, 140, 60),
                     ForeColor = Color.White,
                     FlatStyle = FlatStyle.Flat,
@@ -229,7 +255,12 @@ namespace SkiHotel.Forms
                     int currentActive = OrderService.GetAllOrders().Where(o => o.Status == "Booked" || o.Status == "Заброньовано" || string.IsNullOrEmpty(o.Status)).Count();
                     if (currentActive >= MaxCapacity)
                     {
-                        MessageBox.Show("The limit of 20 free spots has been reached! Cannot approve new booking.", "Capacity Limit", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(
+                            isUk ? "Досягнуто ліміт у 20 вільних місць! Неможливо підтвердити нове бронювання." : "The limit of 20 free spots has been reached! Cannot approve new booking.",
+                            isUk ? "Ліміт місць" : "Capacity Limit",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning
+                        );
                         return;
                     }
 
@@ -239,8 +270,10 @@ namespace SkiHotel.Forms
                 card.Controls.Add(btnApprove);
             }
 
-            // Delete / Reject button
-            string deleteBtnText = isActiveTab ? "Delete" : "Reject";
+            string deleteBtnText = isActiveTab
+                ? (isUk ? "Видалити" : "Delete")
+                : (isUk ? "Відхилити" : "Reject");
+
             Button btnDelete = new Button
             {
                 Text = deleteBtnText,
@@ -254,7 +287,16 @@ namespace SkiHotel.Forms
             btnDelete.FlatAppearance.BorderSize = 0;
             btnDelete.Click += (s, e) =>
             {
-                var result = MessageBox.Show($"Are you sure you want to {(isActiveTab ? "delete" : "reject")} the order for client {order.ClientName}?", "Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                string question = isUk
+                    ? $"Ви впевнені, що хочете {(isActiveTab ? "видалити" : "відхилити")} замовлення клієнта {order.ClientName}?"
+                    : $"Are you sure you want to {(isActiveTab ? "delete" : "reject")} the order for client {order.ClientName}?";
+
+                var result = MessageBox.Show(
+                    question,
+                    isUk ? "Підтвердження" : "Confirmation",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                );
                 if (result == DialogResult.Yes)
                 {
                     OrderService.DeleteOrder(order.Id);

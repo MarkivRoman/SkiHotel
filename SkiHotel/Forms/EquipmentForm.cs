@@ -16,11 +16,19 @@ namespace SkiHotel
         {
             InitializeComponent();
             LoadAndBuildUI();
+            LocalizationManager.LanguageChanged += OnLanguageChanged;
+            this.FormClosed += (s, e) => LocalizationManager.LanguageChanged -= OnLanguageChanged;
+        }
+
+        private void OnLanguageChanged()
+        {
+            LoadAndBuildUI();
         }
 
         private void LoadAndBuildUI()
         {
-            // Очищаємо попередні контроли, якщо відбулося оновлення
+            bool isUk = LocalizationManager.AppLanguage == "uk";
+
             foreach (Control c in this.Controls.Cast<Control>().ToList())
             {
                 if (c is TabControl || (c is Panel && c.Dock == DockStyle.Bottom))
@@ -30,7 +38,6 @@ namespace SkiHotel
 
             tabControlMain = new TabControl { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10, FontStyle.Regular) };
 
-            // Читаємо дані ВИКЛЮЧНО з бази даних SQL Server
             var inventory = new Dictionary<string, Dictionary<string, Dictionary<string, int>>>();
 
             using (var conn = Database.GetConnection())
@@ -54,7 +61,6 @@ namespace SkiHotel
                 }
             }
 
-            // Динамічне створення вкладок на основі категорій з БД
             foreach (var catPair in inventory)
             {
                 string categoryName = catPair.Key;
@@ -73,12 +79,11 @@ namespace SkiHotel
 
             this.Controls.Add(tabControlMain);
 
-            // Нижня панель із кнопкою збереження
             Panel panelBottom = new Panel { Height = 55, Dock = DockStyle.Bottom, BackColor = Color.FromArgb(240, 240, 240) };
             Button btnSave = new Button
             {
-                Text = "Save Changes to Database",
-                Width = 220,
+                Text = isUk ? "Зберегти зміни в базу даних" : "Save Changes to Database",
+                Width = 240,
                 Height = 35,
                 Location = new Point(15, 10),
                 BackColor = Color.FromArgb(46, 204, 113),
@@ -95,6 +100,8 @@ namespace SkiHotel
 
         private Control CreateItemsTable(string category, string subCategory, Dictionary<string, int> items)
         {
+            bool isUk = LocalizationManager.AppLanguage == "uk";
+
             Panel panel = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White };
             TableLayoutPanel table = new TableLayoutPanel
             {
@@ -107,9 +114,9 @@ namespace SkiHotel
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15F));
 
-            table.Controls.Add(new Label { Text = "Item Name", Font = new Font("Segoe UI", 9, FontStyle.Bold), AutoSize = true }, 0, 0);
-            table.Controls.Add(new Label { Text = "Quantity", Font = new Font("Segoe UI", 9, FontStyle.Bold), AutoSize = true }, 1, 0);
-            table.Controls.Add(new Label { Text = "Quick Action", Font = new Font("Segoe UI", 9, FontStyle.Bold), AutoSize = true }, 2, 0);
+            table.Controls.Add(new Label { Text = isUk ? "Назва позиції" : "Item Name", Font = new Font("Segoe UI", 9, FontStyle.Bold), AutoSize = true }, 0, 0);
+            table.Controls.Add(new Label { Text = isUk ? "Кількість" : "Quantity", Font = new Font("Segoe UI", 9, FontStyle.Bold), AutoSize = true }, 1, 0);
+            table.Controls.Add(new Label { Text = isUk ? "Швидка дія" : "Quick Action", Font = new Font("Segoe UI", 9, FontStyle.Bold), AutoSize = true }, 2, 0);
 
             int row = 1;
             foreach (var item in items)
@@ -140,6 +147,8 @@ namespace SkiHotel
 
         private void BtnSave_Click(object sender, EventArgs e)
         {
+            bool isUk = LocalizationManager.AppLanguage == "uk";
+
             using (var conn = Database.GetConnection())
             {
                 conn.Open();
@@ -169,7 +178,12 @@ namespace SkiHotel
                 }
             }
 
-            MessageBox.Show("Inventory successfully updated and saved to SQL Database!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(
+                isUk ? "Інвентар успішно оновлено та збережено в базу даних!" : "Inventory successfully updated and saved to SQL Database!",
+                isUk ? "Успішно" : "Success",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            );
             LoadAndBuildUI();
         }
 

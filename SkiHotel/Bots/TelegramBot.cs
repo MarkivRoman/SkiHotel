@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using SkiHotel.Models;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -16,6 +17,22 @@ namespace SkiHotel
     public static class LocalizationManager
     {
         private static readonly Dictionary<string, Dictionary<string, string>> Languages = new Dictionary<string, Dictionary<string, string>>();
+
+        private static string _appLanguage = "en";
+        public static event Action LanguageChanged;
+
+        public static string AppLanguage
+        {
+            get => _appLanguage;
+            set
+            {
+                if (_appLanguage != value)
+                {
+                    _appLanguage = value;
+                    LanguageChanged?.Invoke();
+                }
+            }
+        }
 
         public static void LoadLanguages()
         {
@@ -80,8 +97,25 @@ namespace SkiHotel
         private static ITelegramBotClient _botClient;
         private static CancellationTokenSource _cts;
 
-        private const long AdminChatId = 123456789;
+        // ВПИШИ СЮДИ ВАШІ ЧИСЛОВІ TELEGRAM ID ЧЕРЕЗ КОМУ:
+        private static readonly long[] AdminChatIds = { 1108484299, 1629241520, 1092932367 };
+
         private static readonly List<UserProfile> Users = new List<UserProfile>();
+        private static readonly HashSet<string> SentOrderSignatures = new HashSet<string>();
+        private static readonly HashSet<string> ProcessedCallbacks = new HashSet<string>();
+
+        private static bool HasValidCharacters(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return false;
+
+            foreach (char c in input.Trim())
+            {
+                if (char.IsLetterOrDigit(c))
+                    return true;
+            }
+            return false;
+        }
 
         public static void StartBot()
         {
@@ -97,13 +131,50 @@ namespace SkiHotel
                     HandleErrorAsync,
                     cancellationToken: _cts.Token
                 );
-           
 
                 Console.WriteLine(LocalizationManager.Get("uk", "BotStarted"));
             }
             catch (Exception ex)
             {
                 Console.WriteLine(LocalizationManager.Get("uk", "BotStartError", ex.Message));
+            }
+        }
+
+        public static async Task SendNewOrderNotificationAsync(Order order)
+        {
+            if (_botClient == null || order == null)
+                return;
+
+            if (!HasValidCharacters(order.ClientName) ||
+               (!HasValidCharacters(order.Phone) && !HasValidCharacters(order.Email)))
+                return;
+
+            string signature = $"{order.ClientName.Trim().ToLower()}|{order.Phone?.Trim()}|{order.Email?.Trim().ToLower()}|{order.SkiPassDays}|{order.TotalPrice}";
+            if (!SentOrderSignatures.Add(signature))
+                return;
+
+            string message =
+                $"🎿 *Нове замовлення #{order.Id}*\n" +
+                $"👤 Клієнт: {order.ClientName}\n" +
+                $"📞 Телефон: {(string.IsNullOrWhiteSpace(order.Phone) ? "-" : order.Phone)}\n" +
+                $"📧 Email: {(string.IsNullOrWhiteSpace(order.Email) ? "-" : order.Email)}\n" +
+                $"📅 Днів: {order.SkiPassDays}\n" +
+                $"💰 Сума: {order.TotalPrice} UAH";
+
+            foreach (long adminId in AdminChatIds)
+            {
+                try
+                {
+                    await _botClient.SendMessage(
+                        chatId: adminId,
+                        text: message,
+                        parseMode: ParseMode.Markdown
+                    );
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Telegram notification error for {adminId}: {ex.Message}");
+                }
             }
         }
 
@@ -117,10 +188,16 @@ namespace SkiHotel
                     return;
                 }
 
-                if (update.Message != null && !string.IsNullOrEmpty(update.Message.Text))
+                if (update.Message != null && update.Message.Text != null)
                 {
                     long chatId = update.Message.Chat.Id;
-                    string text = update.Message.Text;
+                    string text = update.Message.Text.Trim();
+
+                    if (!HasValidCharacters(text))
+                    {
+                        await bot.SendMessage(chatId, "Повідомлення не може бути порожнім або без символів.", cancellationToken: cancellationToken);
+                        return;
+                    }
 
                     UserProfile user = Users.FirstOrDefault(u => u.ChatId == chatId);
                     if (user == null)
@@ -174,7 +251,7 @@ namespace SkiHotel
 
                     if (LocalizationManager.IsMenuKey(lang, "MenuAdmin", text) || text == LocalizationManager.Get(lang, "CmdAdmin"))
                     {
-                        if (chatId == AdminChatId)
+                        if (AdminChatIds.Contains(chatId))
                         {
                             await bot.SendMessage(chatId, LocalizationManager.Get(lang, "AdminStats", Users.Count), parseMode: ParseMode.Markdown, cancellationToken: cancellationToken);
                         }
@@ -206,19 +283,34 @@ namespace SkiHotel
                             break;
 
                         case "WaitingForHeight":
-                            if (int.TryParse(text, out int h)) user.Height = h;
+                            if (!int.TryParse(text, out int h) || h <= 0)
+                            {
+                                await bot.SendMessage(chatId, "Введіть коректний зріст числом:", cancellationToken: cancellationToken);
+                                return;
+                            }
+                            user.Height = h;
                             user.RegistrationStep = "WaitingForWeight";
                             await bot.SendMessage(chatId, LocalizationManager.Get(lang, "PromptWeight"), parseMode: ParseMode.Markdown, cancellationToken: cancellationToken);
                             break;
 
                         case "WaitingForWeight":
-                            if (int.TryParse(text, out int w)) user.Weight = w;
+                            if (!int.TryParse(text, out int w) || w <= 0)
+                            {
+                                await bot.SendMessage(chatId, "Введіть коректну вагу числом:", cancellationToken: cancellationToken);
+                                return;
+                            }
+                            user.Weight = w;
                             user.RegistrationStep = "WaitingForShoe";
                             await bot.SendMessage(chatId, LocalizationManager.Get(lang, "PromptShoe"), parseMode: ParseMode.Markdown, cancellationToken: cancellationToken);
                             break;
 
                         case "WaitingForShoe":
-                            if (int.TryParse(text, out int s)) user.ShoeSize = s;
+                            if (!int.TryParse(text, out int s) || s <= 0)
+                            {
+                                await bot.SendMessage(chatId, "Введіть коректний розмір взуття числом:", cancellationToken: cancellationToken);
+                                return;
+                            }
+                            user.ShoeSize = s;
                             user.RegistrationStep = "None";
 
                             await bot.SendMessage(chatId, LocalizationManager.Get(lang, "DataSaved"), parseMode: ParseMode.Markdown, cancellationToken: cancellationToken);
@@ -235,7 +327,19 @@ namespace SkiHotel
 
         private static async Task HandleCallbackQueryAsync(ITelegramBotClient bot, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
+            if (callbackQuery?.Message == null || string.IsNullOrEmpty(callbackQuery.Data))
+                return;
+
             long chatId = callbackQuery.Message.Chat.Id;
+            int messageId = callbackQuery.Message.MessageId;
+            string callbackKey = $"{chatId}:{messageId}:{callbackQuery.Data}";
+
+            if (!ProcessedCallbacks.Add(callbackKey))
+            {
+                await bot.AnswerCallbackQuery(callbackQuery.Id, "Дію вже виконано.", cancellationToken: cancellationToken);
+                return;
+            }
+
             UserProfile user = Users.FirstOrDefault(u => u.ChatId == chatId);
             if (user == null)
             {
@@ -249,6 +353,7 @@ namespace SkiHotel
                 user.Language = selectedLang;
 
                 await bot.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: cancellationToken);
+                await bot.EditMessageReplyMarkup(chatId, messageId, replyMarkup: null, cancellationToken: cancellationToken);
                 await bot.SendMessage(chatId, LocalizationManager.Get(selectedLang, "LanguageSelected"), cancellationToken: cancellationToken);
                 await SendMainMenu(bot, chatId, selectedLang, cancellationToken);
             }
