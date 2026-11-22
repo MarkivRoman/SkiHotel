@@ -93,6 +93,7 @@
     <Reference Include="System.Xml" />
     <Reference Include="Telegram.Bot, Version=22.10.3.3, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Telegram.Bot.22.10.3.3\lib\netstandard2.0\Telegram.Bot.dll</HintPath>
+      <Private>True</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>

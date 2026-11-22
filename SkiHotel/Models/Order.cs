@@ -10,7 +10,6 @@ namespace SkiHotel.Models
         public string Phone { get; set; } = "";
         public string Email { get; set; } = "";
 
-        // Fields as strings for the file and the new form
         public string HasEquipment { get; set; } = "No";
         public string Weight { get; set; } = "";
         public string Height { get; set; } = "";
@@ -42,5 +41,7 @@ namespace SkiHotel.Models
         public string Poles { get; set; } = "";
 
         public string Status { get; set; } = "Booked";
+
+        public long? BotChatId { get; set; }
     }
 }

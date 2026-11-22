@@ -16,7 +16,7 @@ namespace SkiHotel
 
         public static void InitializeDatabase()
         {
-            // 1. Створення бази даних SkiHotelDB через master
+            // 1. Create SkiHotelDB via master if it does not exist
             string masterConnectionString = @"Server=(localdb)\MSSQLLocalDB;Database=master;Trusted_Connection=True;";
             using (var masterConn = new SqlConnection(masterConnectionString))
             {
@@ -28,12 +28,11 @@ namespace SkiHotel
                 }
             }
 
-            // 2. Створення всіх таблиць у SkiHotelDB
+            // 2. Create all tables in SkiHotelDB
             using (var conn = GetConnection())
             {
                 conn.Open();
 
-                // Таблиця Users
                 string createUsersTable = @"
                     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Users')
                     BEGIN
@@ -46,7 +45,27 @@ namespace SkiHotel
                     END";
                 ExecuteNonQuery(conn, createUsersTable);
 
-                // Таблиця Orders (повна відповідність полям orders.txt)
+                string createBotAccountsTable = @"
+                    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'BotAccounts')
+                    BEGIN
+                        CREATE TABLE BotAccounts (
+                            Id INT IDENTITY(1,1) PRIMARY KEY,
+                            Username NVARCHAR(100) NOT NULL UNIQUE,
+                            PasswordHash NVARCHAR(256) NOT NULL,
+                            Language NVARCHAR(10) NOT NULL DEFAULT 'uk',
+                            FullName NVARCHAR(200) NULL,
+                            Phone NVARCHAR(100) NULL,
+                            Email NVARCHAR(150) NULL,
+                            Height INT NOT NULL DEFAULT 0,
+                            Weight INT NOT NULL DEFAULT 0,
+                            ShoeSize INT NOT NULL DEFAULT 0,
+                            SkillLevel NVARCHAR(100) NULL,
+                            LastChatId BIGINT NULL,
+                            CreatedAt DATETIME NOT NULL DEFAULT GETDATE()
+                        )
+                    END";
+                ExecuteNonQuery(conn, createBotAccountsTable);
+
                 string createOrdersTable = @"
                     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Orders')
                     BEGIN
@@ -69,12 +88,23 @@ namespace SkiHotel
                             Breakfast BIT,
                             Sauna BIT,
                             TotalPrice DECIMAL(18, 2),
-                            Status NVARCHAR(50)
+                            Status NVARCHAR(50),
+                            BotChatId BIGINT NULL
                         )
                     END";
                 ExecuteNonQuery(conn, createOrdersTable);
 
-                // Таблиця Reviews (повна відповідність полям reviews.txt)
+                // Ensure BotChatId column exists even if Orders table was already created earlier
+                string addBotChatIdColumn = @"
+                    IF NOT EXISTS (
+                        SELECT * FROM sys.columns 
+                        WHERE object_id = OBJECT_ID('Orders') AND name = 'BotChatId'
+                    )
+                    BEGIN
+                        ALTER TABLE Orders ADD BotChatId BIGINT NULL;
+                    END";
+                ExecuteNonQuery(conn, addBotChatIdColumn);
+
                 string createReviewsTable = @"
                     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Reviews')
                     BEGIN
@@ -88,7 +118,6 @@ namespace SkiHotel
                     END";
                 ExecuteNonQuery(conn, createReviewsTable);
 
-                // Таблиця EquipmentInventory (повна відповідність структурі equipment.txt)
                 string createEquipmentTable = @"
                     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'EquipmentInventory')
                     BEGIN
@@ -102,10 +131,10 @@ namespace SkiHotel
                     END";
                 ExecuteNonQuery(conn, createEquipmentTable);
 
-                // 3. Початкове заповнення користувачів
+                // 3. Seed WinForms admin/staff users
                 SeedUsers(conn);
 
-                // 4. Одноразова міграція даних зі старих .txt файлів (якщо таблиці порожні)
+                // 4. One-time migration from legacy .txt files if tables are empty
                 MigrateLegacyEquipment(conn);
                 MigrateLegacyOrders(conn);
                 MigrateLegacyReviews(conn);
@@ -171,7 +200,6 @@ namespace SkiHotel
             }
             else
             {
-                // Мінімальний шаблон, якщо файлу не було
                 string query = "INSERT INTO EquipmentInventory (Category, SubCategory, ItemName, Quantity) VALUES ('Skies and Poles', 'Beginner', 'Sample Ski Item', 10)";
                 ExecuteNonQuery(conn, query);
             }
